@@ -1,0 +1,1 @@
+python Yolo26_coordinate.py --images (put image folder) --out (put output folder) --csv C:\Users\61411\Documents\Codex\2026-05-24\i-am-developing-a-new-research\Yolo26_coordinate\precise_cam2_coords.csv --model C:\Users\61411\Documents\Codex\2026-05-24\i-am-developing-a-new-research\Yolo26_coordinate\YOLO26s_RDD_FRDC_Distilled_v2.pt

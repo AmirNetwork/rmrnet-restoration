@@ -1,0 +1,4 @@
+-r requirements-windows-gpu.txt
+-r requirements-detection-extra.txt
+-r requirements-demoe-extra.txt
+-r requirements-dfpir-extra.txt

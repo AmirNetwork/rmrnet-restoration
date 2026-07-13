@@ -1,0 +1,26 @@
+\begin{table*}[!t]
+\centering
+\caption{Revised G46 native-field detection using the YOLO26-coordinate detector. Dual evidence runs YOLO26 on the raw Sony frame and the conservative RMR-Net native-evidence view, then applies primary-class NMS to the union of detections.}
+\label{tab:g46_dual_evidence}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Method & N & Pred & GT success & P@.10 & R@.10 & F1@.10 & F1@.50 & Crack F1@.10 \\
+\midrule
+Raw native & 44 & 96 & 0.311 & 0.510 & 0.293 & 0.373 & 0.274 & 0.323 \\
+RMR-Net image-only & 44 & 92 & 0.293 & 0.511 & 0.281 & 0.363 & 0.247 & 0.309 \\
+RMR-Net metadata full & 44 & 95 & 0.299 & 0.505 & 0.287 & 0.366 & 0.260 & 0.323 \\
+RMR-Net metadata-gated & 44 & 98 & 0.317 & 0.510 & 0.299 & 0.377 & 0.264 & 0.332 \\
+RMR-Net task-trained ($\eta=0.05$) & 44 & 98 & 0.323 & 0.520 & 0.305 & 0.385 & 0.272 & 0.332 \\
+RMR-Net native evidence & 44 & 101 & 0.335 & 0.525 & 0.317 & 0.396 & 0.276 & 0.359 \\
+RMR-Net dual evidence & 44 & 137 & 0.449 & 0.511 & 0.419 & 0.461 & 0.283 & 0.417 \\
+NAFNet-road & 44 & 110 & 0.269 & 0.382 & 0.251 & 0.303 & 0.217 & 0.290 \\
+DFPIR & 44 & 112 & 0.251 & 0.366 & 0.246 & 0.294 & 0.201 & 0.313 \\
+DeMoE-auto & 44 & 99 & 0.305 & 0.495 & 0.293 & 0.368 & 0.278 & 0.319 \\
+DeMoE-scenario & 44 & 99 & 0.287 & 0.455 & 0.269 & 0.338 & 0.248 & 0.307 \\
+InstructIR-generic & 44 & 96 & 0.317 & 0.510 & 0.293 & 0.373 & 0.266 & 0.321 \\
+InstructIR-metadata & 44 & 105 & 0.281 & 0.419 & 0.263 & 0.324 & 0.221 & 0.304 \\
+\bottomrule
+\end{tabular}
+\end{table*}

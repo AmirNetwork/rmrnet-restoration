@@ -1,0 +1,13 @@
+path: C:/Users/61411/Documents/Codex/2026-05-24/i-am-developing-a-new-research/datasets/new_road_crack_detection_v1i_yolov8
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 6
+names:
+  0: alligator_crack
+  1: longitudinal_crack
+  2: others
+  3: pothole
+  4: road_intersection
+  5: transverse_crack

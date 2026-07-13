@@ -1,0 +1,8 @@
+path: C:/Users/61411/Documents/Codex/2026-05-24/i-am-developing-a-new-research/datasets/new_road_crack_detection_v1i_yolov8_defect1
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 1
+names:
+  0: road_defect

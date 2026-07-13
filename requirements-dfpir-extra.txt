@@ -1,0 +1,12 @@
+tqdm
+matplotlib
+tensorboard
+einops
+huggingface_hub
+scikit-image
+opencv-python
+ftfy
+regex
+gdown
+https://github.com/openai/CLIP/archive/refs/heads/main.zip
+
