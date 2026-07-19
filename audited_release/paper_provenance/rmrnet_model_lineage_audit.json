@@ -1,0 +1,163 @@
+{
+  "audit": "RMR-Net native-field versus controlled-dataset checkpoint lineage",
+  "runs": {
+    "g46_detection_heavy": {
+      "name": "g46_detection_heavy",
+      "role": "Sony/G46 native-image deployment experiment",
+      "run_directory": "runs\\gt46_detection_heavy_yolo26_olddata_3ep",
+      "checkpoint": "runs\\gt46_detection_heavy_yolo26_olddata_3ep\\rcadnet_epoch_003.pth",
+      "checkpoint_sha256": "67905071d401b997f0f4560404bb8a6573fc0f840b6abe60a59eef999ba5ebc8",
+      "checkpoint_epoch": 2,
+      "state_tensor_count": 253,
+      "state_key_sha256": "907b48c18b66c2971453d299c884c0093413e3a4255d4688dc45354b62e4555b",
+      "data_roots": [
+        "data\\pcm_restoration_train",
+        "data\\pothole_restoration"
+      ],
+      "scenarios": [
+        "motion_horizontal_medium",
+        "defocus_medium",
+        "lowlight_medium",
+        "mixed_motion_lowlight"
+      ],
+      "contains_native_identity": false,
+      "initial_checkpoint": "runs\\trc_final_rmrnet_pcm_30ep\\rcadnet_epoch_030.pth",
+      "epochs": 3,
+      "batch_size": 1,
+      "learning_rate": 5e-06,
+      "code_source": "metadata_fused",
+      "conditioning": "gated_basis",
+      "base_weight": 0.25,
+      "tdp_weight": 0.08,
+      "jacobian_weight": 5e-05,
+      "metadata_advantage_weight": 0.0,
+      "active_contour_weight": 0.0
+    },
+    "ivcnz_image_only_foundation": {
+      "name": "ivcnz_image_only_foundation",
+      "role": "sequence-disjoint IVCNZ image-only initialization",
+      "run_directory": "runs\\major_revision_sequence_disjoint_v1_image_only30_20260716_rmrnet_pothole_30ep",
+      "checkpoint": "runs\\major_revision_sequence_disjoint_v1_image_only30_20260716_rmrnet_pothole_30ep\\rcadnet_epoch_029.pth",
+      "checkpoint_sha256": "44123fd01e1c54b593ae0991cd221e31640e533712fefdadb2bda77dcfafc0ec",
+      "checkpoint_epoch": 29,
+      "state_tensor_count": 250,
+      "state_key_sha256": "93da6a46587f7a149a33e3ab8a97428192f13a7e461d4001244b05cfdc14eec5",
+      "data_roots": [
+        "data\\pothole_restoration_sequence_disjoint_v1_train"
+      ],
+      "scenarios": [
+        "motion_horizontal_medium",
+        "defocus_medium",
+        "lowlight_medium",
+        "mixed_motion_lowlight",
+        "native_identity"
+      ],
+      "contains_native_identity": true,
+      "initial_checkpoint": null,
+      "epochs": 30,
+      "batch_size": 4,
+      "learning_rate": 0.0001,
+      "code_source": "estimated",
+      "conditioning": "gated_basis",
+      "base_weight": 1.0,
+      "tdp_weight": 0.001,
+      "jacobian_weight": 0.001,
+      "metadata_advantage_weight": 0.0,
+      "active_contour_weight": 0.0
+    },
+    "ivcnz_residual_metadata": {
+      "name": "ivcnz_residual_metadata",
+      "role": "sequence-disjoint IVCNZ metadata-conditioned model",
+      "run_directory": "runs\\strict_residual_metadata_ivcnz_pilot8_20260718_rmrnet_pothole_8ep",
+      "checkpoint": "runs\\strict_residual_metadata_ivcnz_pilot8_20260718_rmrnet_pothole_8ep\\rcadnet_epoch_007.pth",
+      "checkpoint_sha256": "571624c9a89be6797b85d45ff265deb9d3a25bcca27169c01b568f083eb4bbc9",
+      "checkpoint_epoch": 7,
+      "state_tensor_count": 250,
+      "state_key_sha256": "93da6a46587f7a149a33e3ab8a97428192f13a7e461d4001244b05cfdc14eec5",
+      "data_roots": [
+        "data\\pothole_restoration_sequence_disjoint_v1_train"
+      ],
+      "scenarios": [
+        "motion_horizontal_medium",
+        "defocus_medium",
+        "lowlight_medium",
+        "mixed_motion_lowlight"
+      ],
+      "contains_native_identity": false,
+      "initial_checkpoint": "runs\\major_revision_sequence_disjoint_v1_image_only30_20260716_rmrnet_pothole_30ep\\rcadnet_epoch_029.pth",
+      "epochs": 8,
+      "batch_size": 2,
+      "learning_rate": 2e-05,
+      "code_source": "metadata_fused",
+      "conditioning": "residual_basis",
+      "base_weight": 1.0,
+      "tdp_weight": 0.001,
+      "jacobian_weight": 2e-05,
+      "metadata_advantage_weight": 0.02,
+      "active_contour_weight": 0.0
+    }
+  },
+  "controlled_source_manifest": "experiments\\strict_residual_metadata_ivcnz_pilot8_20260718\\source_manifest.json",
+  "controlled_source_comparison": {
+    "models\\rmrnet.py": {
+      "captured": "bf478d8dba8ffb28611b2df35ff41519ba9f390eb3c5634fd1cbb97147217da6",
+      "current": "bf478d8dba8ffb28611b2df35ff41519ba9f390eb3c5634fd1cbb97147217da6",
+      "matches": true
+    },
+    "rcadnet\\model.py": {
+      "captured": "47339d1236cc53a22e2773500684055dc018836dcc35139b3ed4322ea1c8184d",
+      "current": "fdd43ac16ca2bbf1c6b51323f71d30b518f2ce7de2d01a8043552ee92773fc0e",
+      "matches": false
+    },
+    "rcadnet\\losses.py": {
+      "captured": "27e9daddb6b5fdc827aa4c226c33c483ce2640763dad17ac52b98839c52c950e",
+      "current": "27e9daddb6b5fdc827aa4c226c33c483ce2640763dad17ac52b98839c52c950e",
+      "matches": true
+    },
+    "rcadnet\\task_losses.py": {
+      "captured": "37e4b4e41d17c693957343a304837d5d61462397a8aa2fd7cb54baddd422c2b0",
+      "current": "37e4b4e41d17c693957343a304837d5d61462397a8aa2fd7cb54baddd422c2b0",
+      "matches": true
+    },
+    "rcadnet\\dataset.py": {
+      "captured": "352eb3b5b241007d9d2add60385bd7608a323adc974519c9eb3834a17801bbfc",
+      "current": "352eb3b5b241007d9d2add60385bd7608a323adc974519c9eb3834a17801bbfc",
+      "matches": true
+    },
+    "rcadnet\\scenario_codes.py": {
+      "captured": "5e165796e4396c23e241f61d08e59540710cbc3df546a84892f67a3ede9a81b6",
+      "current": "5e165796e4396c23e241f61d08e59540710cbc3df546a84892f67a3ede9a81b6",
+      "matches": true
+    },
+    "train_rcadnet.py": {
+      "captured": "a486ab9dcfc31f8dfbda7604e5dd54507b297168891b95071d00409609429e1d",
+      "current": "4af76803f8bba322e9d42c5c0f818a2e004564a3ff0133b229301be04abdda08",
+      "matches": false
+    },
+    "tools\\run_trc_final_30ep.py": {
+      "captured": "3b7aff66478e2b8a0fe5fbba89b2bdaca679275c7d5b1b05b67b3ec0db9027fb",
+      "current": "5a076f748ce74c7088a0ccfe0ab3e7d3fd7aaff235554e603d7d056d6f676c08",
+      "matches": false
+    }
+  },
+  "lineage_edges": [
+    {
+      "from": "runs\\major_revision_sequence_disjoint_v1_image_only30_20260716_rmrnet_pothole_30ep\\rcadnet_epoch_029.pth",
+      "to": "runs\\strict_residual_metadata_ivcnz_pilot8_20260718_rmrnet_pothole_8ep\\rcadnet_epoch_007.pth",
+      "evidence": "saved init_weights in the residual-metadata trainer config"
+    }
+  ],
+  "checks": {
+    "g46_checkpoint_reused_by_controlled_runs": false,
+    "controlled_checkpoint_state_keys_match": true,
+    "controlled_source_hashes_match_manifest": false,
+    "controlled_metadata_stage_excludes_native_identity": true,
+    "active_contour_disabled_in_controlled_runs": true,
+    "controlled_test_selection_used": false,
+    "native_gate_used_in_controlled_validation": false
+  },
+  "interpretation": {
+    "g46": "Separate three-epoch detection-heavy experiment using old combined training data, base weight 0.25, and TDP weight 0.08.",
+    "controlled": "Sequence-disjoint IVCNZ training and validation. The metadata stage starts from the audited image-only checkpoint, excludes native_identity, and disables the Sony pass-through gate during restoration."
+  }
+}

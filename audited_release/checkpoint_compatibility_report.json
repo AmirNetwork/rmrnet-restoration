@@ -1,0 +1,31 @@
+{
+  "source": "reported_controlled_main",
+  "checks": [
+    {
+      "dataset": "ivcnz",
+      "checkpoint": "ivcnz_epoch_028.pth",
+      "sha256": "3c6a1a8e582639fade7c5cae9cbb301e3f2987d600c06584adacb14c1ab538dd",
+      "state_tensors": 223,
+      "strict_load": "PASS",
+      "inference_shape": [
+        1,
+        3,
+        64,
+        64
+      ]
+    },
+    {
+      "dataset": "pcm",
+      "checkpoint": "pcm_epoch_028.pth",
+      "sha256": "e580d2bf0bb8cc3319afbcca3b3d1cb96ef340667497f445b6685c2ebbe7eec7",
+      "state_tensors": 223,
+      "strict_load": "PASS",
+      "inference_shape": [
+        1,
+        3,
+        64,
+        64
+      ]
+    }
+  ]
+}

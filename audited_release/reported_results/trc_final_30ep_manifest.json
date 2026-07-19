@@ -1,0 +1,29 @@
+[
+  {
+    "dataset": "pothole",
+    "epochs": 30,
+    "selected_epoch": 28,
+    "checkpoint": "runs/trc_final_rmrnet_pothole_30ep/rcadnet_epoch_028.pth",
+    "validation_csv": "experiments/trc_final_30ep/pothole_val_rmrnet_epochs.csv",
+    "test_csv": "experiments/trc_final_30ep/pothole_test_rmrnet_selected.csv",
+    "per_class_csv": "experiments/trc_final_30ep/pothole_test_rmrnet_selected_per_class.csv",
+    "restoration_metrics_csv": "runs/bench_trc_final_rmrnet_pothole_30ep/metrics.csv",
+    "active_contour_loss": 0.0,
+    "selection_rule": "mean validation mAP50 across motion, defocus, low-light, and mixed splits",
+    "test_rule": "test split evaluated once after validation-only checkpoint selection"
+  },
+  {
+    "dataset": "pcm",
+    "epochs": 30,
+    "selected_epoch": 28,
+    "checkpoint": "runs/trc_final_rmrnet_pcm_30ep/rcadnet_epoch_028.pth",
+    "validation_csv": "experiments/trc_final_30ep/pcm_val_rmrnet_epochs.csv",
+    "test_csv": "experiments/trc_final_30ep/pcm_test_rmrnet_selected.csv",
+    "per_class_csv": "experiments/trc_final_30ep/pcm_test_rmrnet_selected_per_class.csv",
+    "restoration_metrics_csv": "runs/bench_trc_final_rmrnet_pcm_30ep/metrics.csv",
+    "active_contour_loss": 0.0,
+    "selection_rule": "mean validation mAP50 across motion, defocus, low-light, and mixed splits",
+    "test_rule": "test split evaluated once after validation-only checkpoint selection",
+    "resume_note": "training was safely resumed from epoch 14 and completed through epoch 30; copied checkpoints are recorded in runs/trc_final_rmrnet_pcm_30ep/resume_from_014_to_030.json"
+  }
+]

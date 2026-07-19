@@ -1,0 +1,6 @@
+{
+  "dataset": "pcm",
+  "epoch": 28,
+  "mean_val_map50": 0.22752683113686384,
+  "num_scenarios": 4
+}

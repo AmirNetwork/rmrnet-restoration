@@ -1,0 +1,62 @@
+[
+  {
+    "name": "motion_rmr_selected",
+    "data": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\datasets\\pothole_yolo_motion_test_rmrnet_trc30_ep028\\data.yaml",
+    "split": "test",
+    "map50_95": 0.1794306398185168,
+    "map50": 0.4267142330716218,
+    "map75": 0.11769604887034457,
+    "precision": 0.616438999449009,
+    "recall": 0.36889276099381985,
+    "class_names": "[\"pothole\"]",
+    "class_map50_95": "[0.1794306398185168]",
+    "class_map50": "[0.4267142330716218]",
+    "class_precision": "[0.616438999449009]",
+    "class_recall": "[0.36889276099381985]"
+  },
+  {
+    "name": "defocus_rmr_selected",
+    "data": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\datasets\\pothole_yolo_defocus_test_rmrnet_trc30_ep028\\data.yaml",
+    "split": "test",
+    "map50_95": 0.15834134065075112,
+    "map50": 0.3721291062724673,
+    "map75": 0.10355539339186613,
+    "precision": 0.638877734082583,
+    "recall": 0.32894736842105265,
+    "class_names": "[\"pothole\"]",
+    "class_map50_95": "[0.15834134065075112]",
+    "class_map50": "[0.3721291062724673]",
+    "class_precision": "[0.638877734082583]",
+    "class_recall": "[0.32894736842105265]"
+  },
+  {
+    "name": "lowlight_rmr_selected",
+    "data": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\datasets\\pothole_yolo_lowlight_test_rmrnet_trc30_ep028\\data.yaml",
+    "split": "test",
+    "map50_95": 0.2424611218133978,
+    "map50": 0.5232460760567675,
+    "map75": 0.18962586190766872,
+    "precision": 0.6178755052476961,
+    "recall": 0.46345029239766083,
+    "class_names": "[\"pothole\"]",
+    "class_map50_95": "[0.2424611218133978]",
+    "class_map50": "[0.5232460760567675]",
+    "class_precision": "[0.6178755052476961]",
+    "class_recall": "[0.46345029239766083]"
+  },
+  {
+    "name": "mixed_rmr_selected",
+    "data": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\datasets\\pothole_yolo_mixed_test_rmrnet_trc30_ep028\\data.yaml",
+    "split": "test",
+    "map50_95": 0.1926838816726043,
+    "map50": 0.4272599954106439,
+    "map75": 0.14310780164562614,
+    "precision": 0.5311073685201415,
+    "recall": 0.41228070175438597,
+    "class_names": "[\"pothole\"]",
+    "class_map50_95": "[0.1926838816726043]",
+    "class_map50": "[0.4272599954106439]",
+    "class_precision": "[0.5311073685201415]",
+    "class_recall": "[0.41228070175438597]"
+  }
+]

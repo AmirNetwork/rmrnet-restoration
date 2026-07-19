@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the accompanying RMR-Net paper."
+title: "RMR-Net: Metadata-conditioned pavement-image restoration"
+type: software
+authors:
+  - family-names: Ghorbani
+    given-names: Amir
+    email: amir.ghorbani@rmit.edu.au
+repository-code: "https://github.com/AmirNetwork/rmrnet-restoration"

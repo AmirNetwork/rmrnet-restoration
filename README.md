@@ -8,6 +8,12 @@ Code author: **Amir Ghorbani** `<amir.ghorbani@rmit.edu.au>`
 
 Repository: https://github.com/AmirNetwork/rmrnet-restoration
 
+## Audited submission release
+
+The paper-aligned release is archived under [`audited_release/`](audited_release/README.md). Start there when reproducing the manuscript. It separates the exact implementation compatible with the reported IVCNZ/PCM epoch-28 checkpoints from later field-policy variants, includes validation-selection and held-out result ledgers, and provides file hashes plus a final integrity audit. The manuscript tables were manually assembled before 15 July 2026 and subsequently checked row by row against these frozen machine-readable artifacts.
+
+The older root-level files are retained as development history. They must not be substituted silently for `audited_release/reported_controlled_main/` when reproducing the controlled headline tables.
+
 RMR-Net is a PyTorch restoration model for road-monitoring imagery. It is designed to improve downstream pavement-defect detection under blur, defocus, low light, noise, and compression while keeping a pass-through path for already high-quality native frames.
 
 The implementation class is still named `RCADNet` in some files for checkpoint compatibility. The paper method name is **RMR-Net**.
