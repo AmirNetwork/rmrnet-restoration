@@ -1,0 +1,20 @@
+\begin{table*}[!t]
+\centering
+\caption{Task-driven objective coefficients.}
+\label{tab:task_objective_audit}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{p{0.17\textwidth}p{0.36\textwidth}p{0.19\textwidth}rr}
+\toprule
+Term & Safeguard / implementation detail & How coefficient was fixed & IVCNZ & PCM \\
+\midrule
+Code supervision & SmoothL1 image-estimated code to known degradation/metadata code & Fixed default from \texttt{--aux-code-weight} & 0.05000 & 0.05000 \\
+Sparse basis gate & Mean absolute sigmoid gate activation & Internal coefficient $10^{-4}$; command multiplier is 1.0 & 0.00010 & 0.00010 \\
+Defect-weighted TDP + CQMix & YOLO11s hooked layers model.2, model.4; mask weight $\rho=4.0$ & Low-weight detector-feature regularizer fixed before test evaluation & 0.00100 & 0.00100 \\
+Jacobian & Dimension-normalized Hutchinson projection, one probe & Coefficient fixed after train-only scale calibration; weighted term remains below TDP and base fidelity & 0.00002 & 0.00002 \\
+Detector anchor & restored-to-degraded YOLO feature anchor & Weak anchor added only to prevent detector-feature drift & 0.00050 & 0.00050 \\
+Evidence non-regression & edge/contrast/high-frequency/saturation & Set below base fidelity but high enough to affect road evidence & 0.02000 & 0.02000 \\
+Detail-copy guard & penalizes detail-skip residual outside train-time defect-evidence proxy & Low-weight artifact control for degradation-aware detail skip & 0.00200 & 0.00200 \\
+\bottomrule
+\end{tabularx}
+\end{table*}

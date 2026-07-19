@@ -1,0 +1,79 @@
+{
+  "test_used_for_selection": false,
+  "split_policy": {
+    "train": [
+      "2011_09_26_drive_0001_sync",
+      "2011_09_26_drive_0002_sync",
+      "2011_09_26_drive_0005_sync"
+    ],
+    "test": [
+      "2011_09_26_drive_0011_sync"
+    ]
+  },
+  "splits": {
+    "train": {
+      "images": 339,
+      "metadata_records": 339,
+      "sequences": [
+        "2011_09_26_drive_0001_sync",
+        "2011_09_26_drive_0002_sync",
+        "2011_09_26_drive_0005_sync"
+      ],
+      "blur_length_px": {
+        "minimum": 19.0,
+        "mean": 28.5929203539823,
+        "maximum": 35.0
+      },
+      "blur_angle_deg": {
+        "minimum": -48.0,
+        "mean": 3.5103305403496257,
+        "maximum": 48.0
+      },
+      "speed_mps": {
+        "minimum": 3.069282302691264,
+        "mean": 7.521602161953103,
+        "maximum": 13.173348520625748
+      },
+      "yaw_rate_radps": {
+        "minimum": -0.25190571797969,
+        "mean": -0.003407178346479716,
+        "maximum": 0.19158392656249
+      },
+      "protocol_sha256": null,
+      "exposure_ms": 24.0
+    },
+    "test": {
+      "images": 233,
+      "metadata_records": 233,
+      "sequences": [
+        "2011_09_26_drive_0011_sync"
+      ],
+      "blur_length_px": {
+        "minimum": 13.0,
+        "mean": 20.570815450643778,
+        "maximum": 33.0
+      },
+      "blur_angle_deg": {
+        "minimum": -16.13583989166631,
+        "mean": -4.29708438287818,
+        "maximum": 6.5972258277644125
+      },
+      "speed_mps": {
+        "minimum": 0.0022531684745403253,
+        "mean": 4.769894583338938,
+        "maximum": 11.929702416247954
+      },
+      "yaw_rate_radps": {
+        "minimum": -0.057310967741846,
+        "mean": -0.01252375223463119,
+        "maximum": 0.0020958599235281
+      },
+      "protocol_sha256": null,
+      "exposure_ms": 24.0
+    }
+  },
+  "filename_overlap": [],
+  "sequence_overlap": [],
+  "sequence_disjoint": true,
+  "ok": true
+}

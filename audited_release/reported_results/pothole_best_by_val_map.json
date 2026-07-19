@@ -1,0 +1,6 @@
+{
+  "dataset": "pothole",
+  "epoch": 28,
+  "mean_val_map50": 0.46126941806821675,
+  "num_scenarios": 4
+}

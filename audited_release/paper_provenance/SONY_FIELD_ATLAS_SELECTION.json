@@ -1,0 +1,26 @@
+{
+  "split": "chronological evaluation",
+  "iou": 0.1,
+  "cases": [
+    {
+      "image": "Cam1_2026-06-09_14-58-47_capt1680_1681.jpg",
+      "focus_gt_index": 2,
+      "crop_xyxy": [
+        2634,
+        1785,
+        4752,
+        3168
+      ]
+    },
+    {
+      "image": "Cam1_2026-06-09_14-59-49_capt2175_2176.jpg",
+      "focus_gt_index": 1,
+      "crop_xyxy": [
+        1488,
+        1060,
+        2914,
+        1991
+      ]
+    }
+  ]
+}

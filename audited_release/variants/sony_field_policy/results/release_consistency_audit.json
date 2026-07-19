@@ -1,0 +1,365 @@
+{
+  "ok": true,
+  "checks": [
+    {
+      "check": "IVCNZ checkpoint SHA256",
+      "ok": true,
+      "actual": "3c6a1a8e582639fade7c5cae9cbb301e3f2987d600c06584adacb14c1ab538dd",
+      "expected": "3c6a1a8e582639fade7c5cae9cbb301e3f2987d600c06584adacb14c1ab538dd"
+    },
+    {
+      "check": "PCM checkpoint SHA256",
+      "ok": true,
+      "actual": "e580d2bf0bb8cc3319afbcca3b3d1cb96ef340667497f445b6685c2ebbe7eec7",
+      "expected": "e580d2bf0bb8cc3319afbcca3b3d1cb96ef340667497f445b6685c2ebbe7eec7"
+    },
+    {
+      "check": "IVCNZ motion degraded",
+      "ok": true,
+      "token": "0.140"
+    },
+    {
+      "check": "IVCNZ motion RMR",
+      "ok": true,
+      "token": "0.427"
+    },
+    {
+      "check": "PCM defocus degraded",
+      "ok": true,
+      "token": "0.060"
+    },
+    {
+      "check": "PCM defocus RMR",
+      "ok": true,
+      "token": "0.233"
+    },
+    {
+      "check": "IVCNZ/motion/Degraded table row",
+      "ok": true,
+      "expected": "motion blur & Degraded & 0.140 & 0.050 & 0.307 & 0.156"
+    },
+    {
+      "check": "IVCNZ/motion/DFPIR table row",
+      "ok": true,
+      "expected": "motion blur & DFPIR & 0.374 & 0.157 & 0.563 & 0.336"
+    },
+    {
+      "check": "IVCNZ/motion/DeMoE-auto table row",
+      "ok": true,
+      "expected": "motion blur & DeMoE-auto & 0.371 & 0.157 & 0.549 & 0.339"
+    },
+    {
+      "check": "IVCNZ/motion/DeMoE-scenario table row",
+      "ok": true,
+      "expected": "motion blur & DeMoE-scenario & 0.382 & 0.161 & 0.589 & 0.335"
+    },
+    {
+      "check": "IVCNZ/motion/NAFNet-road table row",
+      "ok": true,
+      "expected": "motion blur & NAFNet-road & 0.190 & 0.069 & 0.324 & 0.224"
+    },
+    {
+      "check": "IVCNZ/defocus/Degraded table row",
+      "ok": true,
+      "expected": "defocus & Degraded & 0.154 & 0.062 & 0.551 & 0.126"
+    },
+    {
+      "check": "IVCNZ/defocus/DFPIR table row",
+      "ok": true,
+      "expected": "defocus & DFPIR & 0.211 & 0.086 & 0.550 & 0.195"
+    },
+    {
+      "check": "IVCNZ/defocus/DeMoE-auto table row",
+      "ok": true,
+      "expected": "defocus & DeMoE-auto & 0.248 & 0.100 & 0.552 & 0.221"
+    },
+    {
+      "check": "IVCNZ/defocus/DeMoE-scenario table row",
+      "ok": true,
+      "expected": "defocus & DeMoE-scenario & 0.254 & 0.100 & 0.525 & 0.222"
+    },
+    {
+      "check": "IVCNZ/defocus/NAFNet-road table row",
+      "ok": true,
+      "expected": "defocus & NAFNet-road & 0.357 & 0.154 & 0.577 & 0.320"
+    },
+    {
+      "check": "IVCNZ/lowlight/Degraded table row",
+      "ok": true,
+      "expected": "low light & Degraded & 0.517 & 0.246 & 0.673 & 0.439"
+    },
+    {
+      "check": "IVCNZ/lowlight/DFPIR table row",
+      "ok": true,
+      "expected": "low light & DFPIR & 0.475 & 0.216 & 0.569 & 0.431"
+    },
+    {
+      "check": "IVCNZ/lowlight/DeMoE-auto table row",
+      "ok": true,
+      "expected": "low light & DeMoE-auto & 0.510 & 0.241 & 0.603 & 0.477"
+    },
+    {
+      "check": "IVCNZ/lowlight/DeMoE-scenario table row",
+      "ok": true,
+      "expected": "low light & DeMoE-scenario & 0.510 & 0.241 & 0.612 & 0.474"
+    },
+    {
+      "check": "IVCNZ/lowlight/NAFNet-road table row",
+      "ok": true,
+      "expected": "low light & NAFNet-road & 0.505 & 0.236 & 0.639 & 0.442"
+    },
+    {
+      "check": "IVCNZ/mixed/Degraded table row",
+      "ok": true,
+      "expected": "mixed motion+low light & Degraded & 0.280 & 0.120 & 0.474 & 0.269"
+    },
+    {
+      "check": "IVCNZ/mixed/DFPIR table row",
+      "ok": true,
+      "expected": "mixed motion+low light & DFPIR & 0.307 & 0.133 & 0.518 & 0.295"
+    },
+    {
+      "check": "IVCNZ/mixed/DeMoE-auto table row",
+      "ok": true,
+      "expected": "mixed motion+low light & DeMoE-auto & 0.343 & 0.148 & 0.555 & 0.323"
+    },
+    {
+      "check": "IVCNZ/mixed/DeMoE-scenario table row",
+      "ok": true,
+      "expected": "mixed motion+low light & DeMoE-scenario & 0.351 & 0.154 & 0.550 & 0.336"
+    },
+    {
+      "check": "IVCNZ/mixed/NAFNet-road table row",
+      "ok": true,
+      "expected": "mixed motion+low light & NAFNet-road & 0.275 & 0.109 & 0.482 & 0.276"
+    },
+    {
+      "check": "IVCNZ/motion/RMR-Net table row",
+      "ok": true,
+      "expected": "motion blur & RMR-Net & 0.427 & 0.179 & 0.616 & 0.369"
+    },
+    {
+      "check": "IVCNZ/defocus/RMR-Net table row",
+      "ok": true,
+      "expected": "defocus & RMR-Net & 0.372 & 0.158 & 0.639 & 0.329"
+    },
+    {
+      "check": "IVCNZ/lowlight/RMR-Net table row",
+      "ok": true,
+      "expected": "low light & RMR-Net & 0.523 & 0.242 & 0.618 & 0.463"
+    },
+    {
+      "check": "IVCNZ/mixed/RMR-Net table row",
+      "ok": true,
+      "expected": "mixed motion+low light & RMR-Net & 0.427 & 0.193 & 0.531 & 0.412"
+    },
+    {
+      "check": "PCM/motion/Degraded table row",
+      "ok": true,
+      "expected": "motion blur & Degraded & 0.203 & 0.069 & 0.364 & 0.223"
+    },
+    {
+      "check": "PCM/motion/DFPIR table row",
+      "ok": true,
+      "expected": "motion blur & DFPIR & 0.294 & 0.104 & 0.437 & 0.311"
+    },
+    {
+      "check": "PCM/motion/DeMoE-auto table row",
+      "ok": true,
+      "expected": "motion blur & DeMoE-auto & 0.319 & 0.119 & 0.371 & 0.377"
+    },
+    {
+      "check": "PCM/motion/DeMoE-scenario table row",
+      "ok": true,
+      "expected": "motion blur & DeMoE-scenario & 0.320 & 0.119 & 0.370 & 0.377"
+    },
+    {
+      "check": "PCM/motion/NAFNet-road table row",
+      "ok": true,
+      "expected": "motion blur & NAFNet-road & 0.194 & 0.065 & 0.358 & 0.228"
+    },
+    {
+      "check": "PCM/defocus/Degraded table row",
+      "ok": true,
+      "expected": "defocus & Degraded & 0.060 & 0.022 & 0.103 & 0.175"
+    },
+    {
+      "check": "PCM/defocus/DFPIR table row",
+      "ok": true,
+      "expected": "defocus & DFPIR & 0.091 & 0.032 & 0.102 & 0.269"
+    },
+    {
+      "check": "PCM/defocus/DeMoE-auto table row",
+      "ok": true,
+      "expected": "defocus & DeMoE-auto & 0.136 & 0.047 & 0.305 & 0.150"
+    },
+    {
+      "check": "PCM/defocus/DeMoE-scenario table row",
+      "ok": true,
+      "expected": "defocus & DeMoE-scenario & 0.152 & 0.053 & 0.341 & 0.155"
+    },
+    {
+      "check": "PCM/defocus/NAFNet-road table row",
+      "ok": true,
+      "expected": "defocus & NAFNet-road & 0.174 & 0.060 & 0.335 & 0.200"
+    },
+    {
+      "check": "PCM/lowlight/Degraded table row",
+      "ok": true,
+      "expected": "low light & Degraded & 0.326 & 0.132 & 0.451 & 0.336"
+    },
+    {
+      "check": "PCM/lowlight/DFPIR table row",
+      "ok": true,
+      "expected": "low light & DFPIR & 0.352 & 0.142 & 0.459 & 0.395"
+    },
+    {
+      "check": "PCM/lowlight/DeMoE-auto table row",
+      "ok": true,
+      "expected": "low light & DeMoE-auto & 0.317 & 0.127 & 0.461 & 0.336"
+    },
+    {
+      "check": "PCM/lowlight/DeMoE-scenario table row",
+      "ok": true,
+      "expected": "low light & DeMoE-scenario & 0.263 & 0.106 & 0.417 & 0.273"
+    },
+    {
+      "check": "PCM/lowlight/NAFNet-road table row",
+      "ok": true,
+      "expected": "low light & NAFNet-road & 0.364 & 0.147 & 0.540 & 0.360"
+    },
+    {
+      "check": "PCM/mixed/Degraded table row",
+      "ok": true,
+      "expected": "mixed motion+low light & Degraded & 0.061 & 0.023 & 0.190 & 0.094"
+    },
+    {
+      "check": "PCM/mixed/DFPIR table row",
+      "ok": true,
+      "expected": "mixed motion+low light & DFPIR & 0.059 & 0.022 & 0.197 & 0.081"
+    },
+    {
+      "check": "PCM/mixed/DeMoE-auto table row",
+      "ok": true,
+      "expected": "mixed motion+low light & DeMoE-auto & 0.082 & 0.031 & 0.214 & 0.129"
+    },
+    {
+      "check": "PCM/mixed/DeMoE-scenario table row",
+      "ok": true,
+      "expected": "mixed motion+low light & DeMoE-scenario & 0.080 & 0.031 & 0.217 & 0.126"
+    },
+    {
+      "check": "PCM/mixed/NAFNet-road table row",
+      "ok": true,
+      "expected": "mixed motion+low light & NAFNet-road & 0.083 & 0.031 & 0.254 & 0.128"
+    },
+    {
+      "check": "PCM/motion/RMR-Net table row",
+      "ok": true,
+      "expected": "motion blur & RMR-Net & 0.312 & 0.111 & 0.378 & 0.339"
+    },
+    {
+      "check": "PCM/defocus/RMR-Net table row",
+      "ok": true,
+      "expected": "defocus & RMR-Net & 0.233 & 0.080 & 0.335 & 0.261"
+    },
+    {
+      "check": "PCM/lowlight/RMR-Net table row",
+      "ok": true,
+      "expected": "low light & RMR-Net & 0.435 & 0.177 & 0.515 & 0.433"
+    },
+    {
+      "check": "PCM/mixed/RMR-Net table row",
+      "ok": true,
+      "expected": "mixed motion+low light & RMR-Net & 0.139 & 0.048 & 0.278 & 0.206"
+    },
+    {
+      "check": "effective sparse basis coefficient",
+      "ok": true
+    },
+    {
+      "check": "active contour excluded from reported objective",
+      "ok": true
+    },
+    {
+      "check": "headline detail cap",
+      "ok": true
+    },
+    {
+      "check": "no obsolete headline detail cap",
+      "ok": true
+    },
+    {
+      "check": "ILX direct/Raw native",
+      "ok": true,
+      "expected": "Raw native & 96 & 0.510 & 0.293 & 0.373 & 0.274 & 0.311"
+    },
+    {
+      "check": "ILX direct/RMR-Net image-only",
+      "ok": true,
+      "expected": "RMR-Net image-only & 92 & 0.511 & 0.281 & 0.363 & 0.247 & 0.293"
+    },
+    {
+      "check": "ILX direct/RMR-Net context-conditioned",
+      "ok": true,
+      "expected": "RMR-Net context-conditioned & 95 & 0.505 & 0.287 & 0.366 & 0.260 & 0.299"
+    },
+    {
+      "check": "ILX direct/NAFNet-road",
+      "ok": true,
+      "expected": "NAFNet-road & 110 & 0.382 & 0.251 & 0.303 & 0.217 & 0.269"
+    },
+    {
+      "check": "ILX direct/DFPIR",
+      "ok": true,
+      "expected": "DFPIR & 112 & 0.366 & 0.246 & 0.294 & 0.201 & 0.251"
+    },
+    {
+      "check": "ILX direct/DeMoE-auto",
+      "ok": true,
+      "expected": "DeMoE-auto & 99 & 0.495 & 0.293 & 0.368 & 0.278 & 0.305"
+    },
+    {
+      "check": "ILX direct/DeMoE-scenario",
+      "ok": true,
+      "expected": "DeMoE-scenario & 99 & 0.455 & 0.269 & 0.338 & 0.248 & 0.287"
+    },
+    {
+      "check": "ILX direct/InstructIR",
+      "ok": true,
+      "expected": "InstructIR & 96 & 0.510 & 0.293 & 0.373 & 0.266 & 0.317"
+    },
+    {
+      "check": "stale provenance absent: runs/rmrnet_noac_pothole_yolo11s/rcadnet_epoch_004.pth",
+      "ok": true
+    },
+    {
+      "check": "stale provenance absent: runs/rmrnet_noac_pcm_yolo11s/rcadnet_epoch_001.pth",
+      "ok": true
+    },
+    {
+      "check": "stale provenance absent: experiments/no_active_contour_fullrun/pothole_test_noac_selected.csv",
+      "ok": true
+    },
+    {
+      "check": "stale provenance absent: experiments/no_active_contour_fullrun/pcm_test_noac_selected.csv",
+      "ok": true
+    },
+    {
+      "check": "required provenance present: experiments/trc_final_30ep/pothole_test_rmrnet_selected.csv",
+      "ok": true
+    },
+    {
+      "check": "required provenance present: experiments/trc_final_30ep/pcm_test_rmrnet_selected.csv",
+      "ok": true
+    },
+    {
+      "check": "required provenance present: global epoch 28",
+      "ok": true
+    },
+    {
+      "check": "required provenance present: rcadnet_epoch_028.pth",
+      "ok": true
+    }
+  ]
+}

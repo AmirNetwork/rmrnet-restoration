@@ -1,0 +1,89 @@
+model:
+  name: RMR-Net
+  backbone_name: RCADNet
+  width: 40
+  blocks_per_stage: 2
+  block_type: evidence
+  attention_type: task
+  conditioning: gated_basis
+  code_source: metadata_fused
+  metadata_mode: synthetic_proxy_for_road_damage_real_oxts_for_kitti
+  detail_preserve: true
+  detail_gain: 0.20
+  use_tdac_head: false
+
+training:
+  seed: 2026
+  deterministic: false
+  optimizer: AdamW
+  patch_size: 128
+  batch_size: 1
+  epochs_headline_finetune: 4
+  amp: true
+  grad_clip: 1.0
+  task_loss_warmup_epochs: 2
+  detector_input_size: 256
+  base_losses:
+    l1: true
+    edge: true
+    edge_weight: 0.15
+    frequency: true
+    frequency_weight: 0.05
+    defect_weighted: true
+    defect_weight: 0.10
+    detector_visibility: true
+    detector_visibility_weight: 0.08
+    code_supervision: true
+    code_supervision_weight: 0.05
+  task_driven_composite_losses:
+    enabled_for_headline_tables: true
+    tdp: true
+    tdp_weight: 0.001
+    tdp_defect_mask_weight: 4.0
+    cqmix: true
+    cqmix_grid: 4
+    cqmix_prob: 0.5
+    jacobian: true
+    jacobian_weight: 0.00002
+    jacobian_probes: 1
+    active_contour: false
+    active_contour_weight: 0.0
+    detector_input_anchor: true
+    detector_input_anchor_weight: 0.0005
+    evidence_nonregression: true
+    evidence_nonregression_weight: 0.02
+    detail_copy: true
+    detail_copy_weight: 0.002
+    sparse_basis_gate: true
+    basis_sparsity_weight: 1.0
+    clean_feature_path: no_grad
+    base_restoration_loss_remains_dominant: true
+
+selection:
+  restoration_checkpoint_rule: validation_detector_recovery_on_candidate_restored_validation_sets
+  test_rule: restore_test_once_after_validation_selection
+  detector_selection_rule: validation_mAP50
+  deployment_policy: all_restored_for_controlled_degradation_tables
+  native_sony_eta_tau_sweeps: descriptive_heldout_policy_audit_not_test_selected_checkpoint
+  lowlight_boundary_policy: no_extra_yolo11s_gain_validation_selected_all_restored
+
+detection:
+  detector_family: YOLO11s
+  imgsz: 640
+  pothole_weights: runs/detect/runs/yolo11s_v26/pothole_clean_80ep/weights/best.pt
+  pothole_best_epoch: 63
+  pcm_weights: runs/detect/runs/yolo11s_v26/pcm_clean_80ep/weights/best.pt
+  pcm_best_epoch: 67
+
+headline_checkpoints:
+  pothole_motion: runs/rmrnet_v27_taskloss_pothole_yolo11s/rcadnet_epoch_004.pth
+  pothole_defocus: runs/rmrnet_v27_taskloss_pothole_yolo11s/rcadnet_epoch_001.pth
+  pothole_lowlight: runs/rmrnet_v27_taskloss_pothole_yolo11s/rcadnet_epoch_002.pth
+  pcm_motion: runs/rmrnet_v27_taskloss_pcm_yolo11s/rcadnet_epoch_002.pth
+  pcm_defocus: runs/rmrnet_v27_taskloss_pcm_yolo11s/rcadnet_epoch_002.pth
+  pcm_lowlight: runs/rmrnet_v27_taskloss_pcm_yolo11s/rcadnet_epoch_002.pth
+
+release_note:
+  code_class_name: RCADNet remains the implementation class for backwards compatibility
+  paper_method_name: RMR-Net
+  active_contour_use: post_detection_measurement_only_in_final_config

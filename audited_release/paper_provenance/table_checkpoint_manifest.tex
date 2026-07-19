@@ -1,0 +1,15 @@
+\begin{table*}[!t]
+\centering
+\caption{Controlled RMR-Net checkpoint selection audit.}
+\label{tab:checkpoint_manifest}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrrrrl}
+\toprule
+Dataset & Budget & Selected epoch & Mean val. mAP50 & Test-use in selection & Checkpoint SHA-256 prefix \\
+\midrule
+IVCNZ & 30 epochs & 28 & 0.4613 & no & \texttt{3c6a1a8e582639fa} \\
+PCM & 30 global epochs & 28 & 0.2275 & no & \texttt{e580d2bf0bb8cc33} \\
+\bottomrule
+\end{tabular}
+\end{table*}

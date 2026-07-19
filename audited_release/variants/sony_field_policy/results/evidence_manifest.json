@@ -1,0 +1,16 @@
+{
+  "controlled_corpus": "fresh_final baselines + validation-selected 30-epoch no-active-contour RMR-Net",
+  "controlled_sources": [
+    "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\experiments\\fresh_final\\pothole_yolo11s.csv",
+    "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\experiments\\fresh_final\\pcm_yolo11s.csv",
+    "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\experiments\\trc_final_30ep\\pothole_test_rmrnet_selected.csv",
+    "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\experiments\\trc_final_30ep\\pcm_test_rmrnet_selected.csv"
+  ],
+  "field_direct_source": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\experiments\\gt46_yolo26_coordinate_revised\\evaluation_all_methods_yolo26rev_imgsz1280_conf010_clsD00-015_D10-025_D20-025_gamma085\\summary_metrics.csv",
+  "field_fair_source": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\experiments\\gt46_yolo26_coordinate_revised\\evaluation_two_view_fairness_20260714\\manifest.json",
+  "field_metric": "corpus-level greedy primary-family matching; IoU 0.10 and 0.50",
+  "field_confirmatory_split": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\experiments\\major_revision_evidence_20260715\\ilx_temporal_holdout_manifest.json",
+  "relaxed_coverage": "same primary family and (IoU>=0.10 or GT area coverage>=0.25 or GT center contained); not AP or standard recall",
+  "bootstrap": "5000 image-level paired resamples, seed 2026",
+  "notes": "Old bootstrap/Holm tables are excluded because they use a different prediction corpus from the audited 30-epoch main tables."
+}

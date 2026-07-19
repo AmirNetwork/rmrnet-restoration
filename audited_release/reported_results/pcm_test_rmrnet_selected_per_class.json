@@ -1,0 +1,110 @@
+[
+  {
+    "eval_name": "motion_rmr_selected",
+    "class_id": 0,
+    "class_name": "pothole",
+    "precision": 0.454952359258422,
+    "recall": 0.35751295336787564,
+    "map50": 0.3294542469290452,
+    "map50_95": 0.10429383127011072
+  },
+  {
+    "eval_name": "motion_rmr_selected",
+    "class_id": 1,
+    "class_name": "crack",
+    "precision": 0.23340524902717594,
+    "recall": 0.12162162162162163,
+    "map50": 0.11233120023964344,
+    "map50_95": 0.037458840706354045
+  },
+  {
+    "eval_name": "motion_rmr_selected",
+    "class_id": 2,
+    "class_name": "manhole",
+    "precision": 0.4455996402730938,
+    "recall": 0.5369127516778524,
+    "map50": 0.4932912938561016,
+    "map50_95": 0.19027909006557392
+  },
+  {
+    "eval_name": "defocus_rmr_selected",
+    "class_id": 0,
+    "class_name": "pothole",
+    "precision": 0.27192330097564327,
+    "recall": 0.33678756476683935,
+    "map50": 0.22394637555336094,
+    "map50_95": 0.07224007616237309
+  },
+  {
+    "eval_name": "defocus_rmr_selected",
+    "class_id": 1,
+    "class_name": "crack",
+    "precision": 0.1998219392123919,
+    "recall": 0.14443620462593984,
+    "map50": 0.11197001419987676,
+    "map50_95": 0.03460826438564429
+  },
+  {
+    "eval_name": "defocus_rmr_selected",
+    "class_id": 2,
+    "class_name": "manhole",
+    "precision": 0.53339291543197,
+    "recall": 0.30201342281879195,
+    "map50": 0.3633415416680985,
+    "map50_95": 0.1339815256823135
+  },
+  {
+    "eval_name": "lowlight_rmr_selected",
+    "class_id": 0,
+    "class_name": "pothole",
+    "precision": 0.5297251285195471,
+    "recall": 0.4143818259481676,
+    "map50": 0.4243283873731615,
+    "map50_95": 0.1609465443443257
+  },
+  {
+    "eval_name": "lowlight_rmr_selected",
+    "class_id": 1,
+    "class_name": "crack",
+    "precision": 0.35361420552181533,
+    "recall": 0.2864864864864865,
+    "map50": 0.2582477588333977,
+    "map50_95": 0.09512887025391445
+  },
+  {
+    "eval_name": "lowlight_rmr_selected",
+    "class_id": 2,
+    "class_name": "manhole",
+    "precision": 0.6629041399957356,
+    "recall": 0.5973154362416108,
+    "map50": 0.6219446887782207,
+    "map50_95": 0.27377991322869916
+  },
+  {
+    "eval_name": "mixed_rmr_selected",
+    "class_id": 0,
+    "class_name": "pothole",
+    "precision": 0.29611981638367313,
+    "recall": 0.21761658031088082,
+    "map50": 0.13821649612051234,
+    "map50_95": 0.0482177416223156
+  },
+  {
+    "eval_name": "mixed_rmr_selected",
+    "class_id": 1,
+    "class_name": "crack",
+    "precision": 0.19694598927627976,
+    "recall": 0.07027027027027027,
+    "map50": 0.03270595544004334,
+    "map50_95": 0.010959320733619288
+  },
+  {
+    "eval_name": "mixed_rmr_selected",
+    "class_id": 2,
+    "class_name": "manhole",
+    "precision": 0.3394768950374652,
+    "recall": 0.3288590604026846,
+    "map50": 0.2450638292720966,
+    "map50_95": 0.08418345058348958
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "frames_total": 46,
+  "frames_common_taxonomy": 44,
+  "class_counts": {
+    "Transverse Crack": 32,
+    "Longitudinal Crack": 76,
+    "Alligator Crack": 32,
+    "Potholes": 27
+  }
+}

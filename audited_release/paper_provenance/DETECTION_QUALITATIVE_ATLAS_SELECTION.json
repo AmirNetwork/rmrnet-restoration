@@ -1,0 +1,596 @@
+{
+  "pcm": {
+    "figure": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\paper_automation_in_construction_rmrnet\\figures\\fig_detection_candidate_atlas_pcm.png",
+    "zoom_figure": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\paper_automation_in_construction_rmrnet\\figures\\fig_detection_candidate_atlas_pcm_zoom.png",
+    "candidates": [
+      {
+        "scenario": "motion",
+        "name": "20250216_164325.jpg",
+        "gt_count": 9,
+        "matches": {
+          "Clean": 2,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 1,
+          "DeMoE-scenario": 2,
+          "RMR+meta": 3
+        },
+        "pred_counts": {
+          "Clean": 4,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 1,
+          "DeMoE-scenario": 5,
+          "RMR+meta": 7
+        },
+        "false_pos": {
+          "Clean": 2,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 3,
+          "RMR+meta": 4
+        },
+        "score": 40.0,
+        "rmr_gain": 3,
+        "rmr_margin": 1
+      },
+      {
+        "scenario": "motion",
+        "name": "20250219_164813.jpg",
+        "gt_count": 4,
+        "matches": {
+          "Clean": 3,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 1,
+          "RMR+meta": 2
+        },
+        "pred_counts": {
+          "Clean": 8,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 1,
+          "RMR+meta": 6
+        },
+        "false_pos": {
+          "Clean": 5,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 4
+        },
+        "score": 33.5,
+        "rmr_gain": 2,
+        "rmr_margin": 1
+      },
+      {
+        "scenario": "defocus",
+        "name": "vlcsnap-00165.jpg",
+        "gt_count": 4,
+        "matches": {
+          "Clean": 4,
+          "Degraded": 0,
+          "NAFNet": 1,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 2
+        },
+        "pred_counts": {
+          "Clean": 5,
+          "Degraded": 0,
+          "NAFNet": 1,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 2
+        },
+        "false_pos": {
+          "Clean": 1,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 0
+        },
+        "score": 47.5,
+        "rmr_gain": 2,
+        "rmr_margin": 1
+      },
+      {
+        "scenario": "defocus",
+        "name": "20250219_164738.jpg",
+        "gt_count": 6,
+        "matches": {
+          "Clean": 2,
+          "Degraded": 0,
+          "NAFNet": 1,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 3
+        },
+        "pred_counts": {
+          "Clean": 3,
+          "Degraded": 0,
+          "NAFNet": 2,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 5
+        },
+        "false_pos": {
+          "Clean": 1,
+          "Degraded": 0,
+          "NAFNet": 1,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 2
+        },
+        "score": 45.5,
+        "rmr_gain": 3,
+        "rmr_margin": 2
+      },
+      {
+        "scenario": "lowlight",
+        "name": "vlcsnap-00165.jpg",
+        "gt_count": 4,
+        "matches": {
+          "Clean": 4,
+          "Degraded": 2,
+          "NAFNet": 2,
+          "DFPIR": 3,
+          "DeMoE-scenario": 2,
+          "RMR+meta": 3
+        },
+        "pred_counts": {
+          "Clean": 5,
+          "Degraded": 2,
+          "NAFNet": 2,
+          "DFPIR": 3,
+          "DeMoE-scenario": 2,
+          "RMR+meta": 3
+        },
+        "false_pos": {
+          "Clean": 1,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 0
+        },
+        "score": 40.5,
+        "rmr_gain": 1,
+        "rmr_margin": 0
+      },
+      {
+        "scenario": "lowlight",
+        "name": "vlcsnap-00083.jpg",
+        "gt_count": 2,
+        "matches": {
+          "Clean": 2,
+          "Degraded": 1,
+          "NAFNet": 1,
+          "DFPIR": 1,
+          "DeMoE-scenario": 1,
+          "RMR+meta": 2
+        },
+        "pred_counts": {
+          "Clean": 2,
+          "Degraded": 1,
+          "NAFNet": 1,
+          "DFPIR": 1,
+          "DeMoE-scenario": 1,
+          "RMR+meta": 2
+        },
+        "false_pos": {
+          "Clean": 0,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 0
+        },
+        "score": 28.0,
+        "rmr_gain": 1,
+        "rmr_margin": 1
+      }
+    ]
+  },
+  "pcm_crack": {
+    "figure": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\paper_automation_in_construction_rmrnet\\figures\\fig_detection_candidate_atlas_pcm_crack.png",
+    "zoom_figure": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\paper_automation_in_construction_rmrnet\\figures\\fig_detection_candidate_atlas_pcm_crack_zoom.png",
+    "candidates": [
+      {
+        "scenario": "motion",
+        "name": "20250219_164738.jpg",
+        "gt_count": 2,
+        "matches": {
+          "Clean": 2,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 1,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 2
+        },
+        "pred_counts": {
+          "Clean": 3,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 1,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 5
+        },
+        "false_pos": {
+          "Clean": 1,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 3
+        },
+        "score": 31.0,
+        "rmr_gain": 2,
+        "rmr_margin": 1
+      },
+      {
+        "scenario": "motion",
+        "name": "vlcsnap-00192.jpg",
+        "gt_count": 2,
+        "matches": {
+          "Clean": 2,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 1
+        },
+        "pred_counts": {
+          "Clean": 3,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 2,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 2
+        },
+        "false_pos": {
+          "Clean": 1,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 2,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 1
+        },
+        "score": 23.0,
+        "rmr_gain": 1,
+        "rmr_margin": 1
+      },
+      {
+        "scenario": "defocus",
+        "name": "20250219_164738.jpg",
+        "gt_count": 2,
+        "matches": {
+          "Clean": 2,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 2
+        },
+        "pred_counts": {
+          "Clean": 3,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 4
+        },
+        "false_pos": {
+          "Clean": 1,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 2
+        },
+        "score": 34.5,
+        "rmr_gain": 2,
+        "rmr_margin": 2
+      },
+      {
+        "scenario": "defocus",
+        "name": "vlcsnap-00165.jpg",
+        "gt_count": 3,
+        "matches": {
+          "Clean": 3,
+          "Degraded": 0,
+          "NAFNet": 1,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 1
+        },
+        "pred_counts": {
+          "Clean": 4,
+          "Degraded": 0,
+          "NAFNet": 1,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 1
+        },
+        "false_pos": {
+          "Clean": 1,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 0
+        },
+        "score": 28.5,
+        "rmr_gain": 1,
+        "rmr_margin": 0
+      },
+      {
+        "scenario": "lowlight",
+        "name": "vlcsnap-00165.jpg",
+        "gt_count": 3,
+        "matches": {
+          "Clean": 3,
+          "Degraded": 1,
+          "NAFNet": 1,
+          "DFPIR": 2,
+          "DeMoE-scenario": 1,
+          "RMR+meta": 2
+        },
+        "pred_counts": {
+          "Clean": 4,
+          "Degraded": 1,
+          "NAFNet": 1,
+          "DFPIR": 2,
+          "DeMoE-scenario": 1,
+          "RMR+meta": 2
+        },
+        "false_pos": {
+          "Clean": 1,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 0
+        },
+        "score": 31.5,
+        "rmr_gain": 1,
+        "rmr_margin": 0
+      },
+      {
+        "scenario": "lowlight",
+        "name": "20250219_164738.jpg",
+        "gt_count": 2,
+        "matches": {
+          "Clean": 2,
+          "Degraded": 1,
+          "NAFNet": 2,
+          "DFPIR": 2,
+          "DeMoE-scenario": 1,
+          "RMR+meta": 2
+        },
+        "pred_counts": {
+          "Clean": 3,
+          "Degraded": 1,
+          "NAFNet": 2,
+          "DFPIR": 2,
+          "DeMoE-scenario": 1,
+          "RMR+meta": 4
+        },
+        "false_pos": {
+          "Clean": 1,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 2
+        },
+        "score": 22.5,
+        "rmr_gain": 1,
+        "rmr_margin": 0
+      }
+    ]
+  },
+  "pothole": {
+    "figure": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\paper_automation_in_construction_rmrnet\\figures\\fig_detection_candidate_atlas_pothole.png",
+    "zoom_figure": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\paper_automation_in_construction_rmrnet\\figures\\fig_detection_candidate_atlas_pothole_zoom.png",
+    "candidates": [
+      {
+        "scenario": "motion",
+        "name": "img-1005.jpg",
+        "gt_count": 13,
+        "matches": {
+          "Clean": 12,
+          "Degraded": 0,
+          "NAFNet": 3,
+          "DFPIR": 6,
+          "DeMoE-scenario": 6,
+          "RMR+meta": 9
+        },
+        "pred_counts": {
+          "Clean": 20,
+          "Degraded": 0,
+          "NAFNet": 3,
+          "DFPIR": 6,
+          "DeMoE-scenario": 7,
+          "RMR+meta": 12
+        },
+        "false_pos": {
+          "Clean": 8,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 1,
+          "RMR+meta": 3
+        },
+        "score": 168.5,
+        "rmr_gain": 9,
+        "rmr_margin": 3
+      },
+      {
+        "scenario": "motion",
+        "name": "img-1185.jpg",
+        "gt_count": 17,
+        "matches": {
+          "Clean": 11,
+          "Degraded": 1,
+          "NAFNet": 2,
+          "DFPIR": 7,
+          "DeMoE-scenario": 6,
+          "RMR+meta": 7
+        },
+        "pred_counts": {
+          "Clean": 13,
+          "Degraded": 2,
+          "NAFNet": 3,
+          "DFPIR": 9,
+          "DeMoE-scenario": 6,
+          "RMR+meta": 8
+        },
+        "false_pos": {
+          "Clean": 2,
+          "Degraded": 1,
+          "NAFNet": 1,
+          "DFPIR": 2,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 1
+        },
+        "score": 132.5,
+        "rmr_gain": 6,
+        "rmr_margin": 0
+      },
+      {
+        "scenario": "defocus",
+        "name": "img-1005.jpg",
+        "gt_count": 13,
+        "matches": {
+          "Clean": 12,
+          "Degraded": 0,
+          "NAFNet": 5,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 5
+        },
+        "pred_counts": {
+          "Clean": 20,
+          "Degraded": 0,
+          "NAFNet": 5,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 6
+        },
+        "false_pos": {
+          "Clean": 8,
+          "Degraded": 0,
+          "NAFNet": 0,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 1
+        },
+        "score": 121.5,
+        "rmr_gain": 5,
+        "rmr_margin": 0
+      },
+      {
+        "scenario": "defocus",
+        "name": "img-1185.jpg",
+        "gt_count": 17,
+        "matches": {
+          "Clean": 11,
+          "Degraded": 0,
+          "NAFNet": 2,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 4
+        },
+        "pred_counts": {
+          "Clean": 13,
+          "Degraded": 0,
+          "NAFNet": 3,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 4
+        },
+        "false_pos": {
+          "Clean": 2,
+          "Degraded": 0,
+          "NAFNet": 1,
+          "DFPIR": 0,
+          "DeMoE-scenario": 0,
+          "RMR+meta": 0
+        },
+        "score": 113.0,
+        "rmr_gain": 4,
+        "rmr_margin": 2
+      },
+      {
+        "scenario": "lowlight",
+        "name": "img-1185.jpg",
+        "gt_count": 17,
+        "matches": {
+          "Clean": 11,
+          "Degraded": 9,
+          "NAFNet": 10,
+          "DFPIR": 9,
+          "DeMoE-scenario": 9,
+          "RMR+meta": 12
+        },
+        "pred_counts": {
+          "Clean": 13,
+          "Degraded": 12,
+          "NAFNet": 13,
+          "DFPIR": 14,
+          "DeMoE-scenario": 12,
+          "RMR+meta": 14
+        },
+        "false_pos": {
+          "Clean": 2,
+          "Degraded": 3,
+          "NAFNet": 3,
+          "DFPIR": 5,
+          "DeMoE-scenario": 3,
+          "RMR+meta": 2
+        },
+        "score": 126.0,
+        "rmr_gain": 3,
+        "rmr_margin": 2
+      },
+      {
+        "scenario": "lowlight",
+        "name": "img-1112.jpg",
+        "gt_count": 14,
+        "matches": {
+          "Clean": 9,
+          "Degraded": 4,
+          "NAFNet": 5,
+          "DFPIR": 5,
+          "DeMoE-scenario": 4,
+          "RMR+meta": 5
+        },
+        "pred_counts": {
+          "Clean": 11,
+          "Degraded": 5,
+          "NAFNet": 7,
+          "DFPIR": 6,
+          "DeMoE-scenario": 7,
+          "RMR+meta": 7
+        },
+        "false_pos": {
+          "Clean": 2,
+          "Degraded": 1,
+          "NAFNet": 2,
+          "DFPIR": 1,
+          "DeMoE-scenario": 3,
+          "RMR+meta": 2
+        },
+        "score": 73.0,
+        "rmr_gain": 1,
+        "rmr_margin": 0
+      }
+    ]
+  }
+}
