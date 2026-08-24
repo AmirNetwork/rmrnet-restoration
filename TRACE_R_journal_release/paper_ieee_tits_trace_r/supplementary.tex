@@ -122,9 +122,12 @@ Detector operating threshold & 0.200 \\
 \end{tabular}
 \end{table}
 
-The subsequent 13-frame temporal block contains 49 ground-truth objects. Table~\ref{tab:crid} repeats the complete ranked comparison. The block was inspected during prior development and is therefore supportive rather than newly sealed evidence.
+The subsequent 13-frame temporal block contains 49 ground-truth objects. Its complete ranked comparison is reported once in the main paper; the block was inspected during prior development and is therefore supportive rather than newly sealed evidence.
 
-\input{tables/table_crid}
+\section{Evidence and Reproducibility Boundaries}
+The IVCNZ and PCM results are sequence/source-disjoint validation evidence. Earlier development opened the original test partitions, so those partitions are excluded from the reported claim. KITTI uses an earlier arXiv checkpoint. CRID uses a temporally earlier calibration segment and a non-overlapping but previously inspected evaluation segment. These boundaries are encoded in the provenance ledger and are not inferred from directory names.
+
+The public release includes packet builders, matched training commands, expert-routing code, detector adapters, route constants, checkpoint hashes, qualitative-selection manifests, and the frozen result ledger. Historical file aliases remain only to reproduce old manifests. Paper-facing code and comments use TRACE-R, and all numerical tables in the manuscript are generated from the frozen ledger or the frozen CRID summaries.
 
 \begin{figure*}[!t]
 \centering
@@ -132,10 +135,5 @@ The subsequent 13-frame temporal block contains 49 ground-truth objects. Table~\
 \caption{All 13 CRID temporal-evaluation frames. Yellow boxes are annotations and green boxes are predictions at validation-fixed operating thresholds. TRACE-R labels each frame as native pass-through or native-plus-restored evidence.}
 \label{fig:crid_all}
 \end{figure*}
-
-\section{Evidence and Reproducibility Boundaries}
-The IVCNZ and PCM results are sequence/source-disjoint validation evidence. Earlier development opened the original test partitions, so those partitions are excluded from the reported claim. KITTI uses an earlier arXiv checkpoint. CRID uses a temporally earlier calibration segment and a non-overlapping but previously inspected evaluation segment. These boundaries are encoded in the provenance ledger and are not inferred from directory names.
-
-The public release includes packet builders, matched training commands, expert-routing code, detector adapters, route constants, checkpoint hashes, qualitative-selection manifests, and the frozen result ledger. Historical file aliases remain only to reproduce old manifests. Paper-facing code and comments use TRACE-R, and all numerical tables in the manuscript are generated from the frozen ledger or the frozen CRID summaries.
 
 \end{document}

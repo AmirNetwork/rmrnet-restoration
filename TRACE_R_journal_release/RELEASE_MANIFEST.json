@@ -12,9 +12,9 @@
   },
   "paper": {
     "main_pages": 10,
-    "supplement_pages": 5,
+    "supplement_pages": 4,
     "main_pdf_sha256": "7379f9dafbb2e11f71925e70b4a3f3774d9230273a0a2a14d80e3b741d9d775c",
-    "supplement_pdf_sha256": "f04772e560b8600a74a3622e88834e22957760a62cafa3d750c41c7bbc0b35cb"
+    "supplement_pdf_sha256": "ca76b2066baf70f27e80a59840bf0d5e502b2b17964ef4f766211450903a2bd9"
   },
   "source": {
     "public_router_sha256": "4096302e41574276bf4323ddce96a6af90ce6a9efc1f94d7270600d47ae0cbb1",
