@@ -1,0 +1,11 @@
+tqdm==4.67.3
+matplotlib==3.10.9
+tensorboard==2.20.0
+einops==0.8.2
+huggingface_hub==0.36.2
+scikit-image==0.26.0
+opencv-python==4.10.0.84
+ftfy==6.3.1
+regex==2026.5.9
+gdown==6.0.0
+https://github.com/openai/CLIP/archive/refs/heads/main.zip

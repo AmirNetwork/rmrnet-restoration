@@ -1,0 +1,12 @@
+# Extra packages for the official DeMoE baseline adapter.
+#
+# Keep torch/torchvision installed from requirements-windows-gpu.txt so the
+# local CUDA build remains consistent. The official DeMoE README used
+# Python 3.10.12, PyTorch 2.5.1, and CUDA 12.4; this project has also been
+# smoke-tested with the workspace CUDA PyTorch install.
+einops==0.8.2
+numpy==2.4.4
+opencv-python==4.10.0.84
+Pillow==12.2.0
+PyYAML==6.0.3
+tqdm==4.67.3

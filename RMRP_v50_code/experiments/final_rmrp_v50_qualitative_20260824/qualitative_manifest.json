@@ -1,0 +1,154 @@
+{
+  "status": "COMPLETE",
+  "split": "validation",
+  "test_split_used": false,
+  "selection_rule": "RMR-P ties the best displayed restorer and recovers more class-correct IoU50 ground truth than degraded input; DeMoE gain, confidence, and GT-count tie-breaks",
+  "display_confidence": 0.15,
+  "detector_nms_iou": 0.7,
+  "methods": [
+    "raw",
+    "instructir",
+    "dfpir",
+    "demoe",
+    "rmrp"
+  ],
+  "datasets": {
+    "ivcnz": {
+      "figure": "paper_automation_in_construction_rmrnet/figures/fig_ivcnz_v50_validation_comparison.png",
+      "detector": "runs\\detect\\runs\\yolo11s_sequence_disjoint_v1_20260716\\pothole_clean_80ep\\weights\\best.pt",
+      "detector_sha256": "7d7e24e4e13e85456578b505dcf7ba327ab923d1fbd68fc2127e04766c96b4b9",
+      "selected": [
+        {
+          "dataset": "ivcnz",
+          "cause": "lowlight",
+          "stem": "img-898",
+          "gt_count": 4,
+          "rmrp_tp": 3,
+          "best_peer_tp": 3,
+          "tp_margin": 0,
+          "raw_tp_gain": 3,
+          "demoe_tp_gain": 0,
+          "confidence_margin": -0.023948058485984802,
+          "stats": {
+            "raw": {
+              "tp": 0,
+              "matched_confidence": 0.0
+            },
+            "instructir": {
+              "tp": 2,
+              "matched_confidence": 0.37204326689243317
+            },
+            "dfpir": {
+              "tp": 1,
+              "matched_confidence": 0.24832773208618164
+            },
+            "demoe": {
+              "tp": 3,
+              "matched_confidence": 0.6773427873849869
+            },
+            "rmrp": {
+              "tp": 3,
+              "matched_confidence": 0.6533947288990021
+            }
+          },
+          "crop_xyxy": [
+            0,
+            0,
+            416,
+            213
+          ],
+          "source_sha256": "7f556becf28cc8280987422062294383080540c7089f1bf69824a391205fcf18"
+        }
+      ]
+    },
+    "pcm": {
+      "figure": "paper_automation_in_construction_rmrnet/figures/fig_pcm_v50_validation_comparison.png",
+      "detector": "runs\\detect\\runs\\yolo11s_sequence_disjoint_v1_20260716\\pcm_clean_80ep\\weights\\best.pt",
+      "detector_sha256": "7b6db99cd29da5ed4488d99a0afce2606491222251ce2669592290133562d290",
+      "selected": [
+        {
+          "dataset": "pcm",
+          "cause": "mixed",
+          "stem": "vlcsnap-2025-02-26-20h34m28s085",
+          "gt_count": 3,
+          "rmrp_tp": 3,
+          "best_peer_tp": 2,
+          "tp_margin": 1,
+          "raw_tp_gain": 3,
+          "demoe_tp_gain": 1,
+          "confidence_margin": 0.30825890600681305,
+          "stats": {
+            "raw": {
+              "tp": 0,
+              "matched_confidence": 0.0
+            },
+            "instructir": {
+              "tp": 0,
+              "matched_confidence": 0.0
+            },
+            "dfpir": {
+              "tp": 0,
+              "matched_confidence": 0.0
+            },
+            "demoe": {
+              "tp": 2,
+              "matched_confidence": 0.4240500181913376
+            },
+            "rmrp": {
+              "tp": 3,
+              "matched_confidence": 0.7323089241981506
+            }
+          },
+          "crop_xyxy": [
+            36,
+            214,
+            640,
+            352
+          ],
+          "source_sha256": "a11e06e2c93b7ec2eb263216f93db19a7ae77c93a82e7f7cc54f36722a676a4f"
+        },
+        {
+          "dataset": "pcm",
+          "cause": "lowlight",
+          "stem": "vlcsnap-2025-02-26-20h36m19s818",
+          "gt_count": 3,
+          "rmrp_tp": 3,
+          "best_peer_tp": 2,
+          "tp_margin": 1,
+          "raw_tp_gain": 3,
+          "demoe_tp_gain": 1,
+          "confidence_margin": 0.1619630604982376,
+          "stats": {
+            "raw": {
+              "tp": 0,
+              "matched_confidence": 0.0
+            },
+            "instructir": {
+              "tp": 1,
+              "matched_confidence": 0.8217293620109558
+            },
+            "dfpir": {
+              "tp": 1,
+              "matched_confidence": 0.6871277093887329
+            },
+            "demoe": {
+              "tp": 2,
+              "matched_confidence": 0.6864612400531769
+            },
+            "rmrp": {
+              "tp": 3,
+              "matched_confidence": 0.9836924225091934
+            }
+          },
+          "crop_xyxy": [
+            37,
+            159,
+            640,
+            360
+          ],
+          "source_sha256": "0889ebd08434c40eb2932c0db47ba57cff9dc93e36984d11e651dd0bc4ec4b01"
+        }
+      ]
+    }
+  }
+}
