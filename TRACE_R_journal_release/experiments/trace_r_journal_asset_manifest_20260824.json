@@ -1,0 +1,25 @@
+{
+  "status": "COMPLETE",
+  "method": "TRACE-R",
+  "source_ledger": "experiments/final_rmrp_v50_validation_ledger_20260824/provenance_ledger.json",
+  "test_split_used": false,
+  "figure_format": "PDF with vector labels and borders",
+  "figures": [
+    "fig_trace_architecture.pdf",
+    "fig_trace_controlled_results.pdf",
+    "fig_trace_pcm_qualitative.pdf",
+    "fig_trace_ivcnz_qualitative.pdf",
+    "fig_trace_crid_ap.pdf",
+    "fig_trace_crid_validation_example.pdf",
+    "fig_trace_crid_all13.pdf"
+  ],
+  "tables": [
+    "table_controlled_summary.tex",
+    "table_condition_results.tex",
+    "table_metadata_controls.tex",
+    "table_fidelity.tex",
+    "table_crid.tex",
+    "table_training_audit.tex",
+    "table_checkpoints.tex"
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "method": "TRACE-R",
+  "expansion": "Telemetry-Routed Adaptive Corruption-Expert Restoration",
+  "author": "Amir Ghorbani <amir.ghorbani@rmit.edu.au>",
+  "historical_evidence_key": "rmrp",
+  "source_ledger": "experiments/final_rmrp_v50_validation_ledger_20260824/provenance_ledger.json",
+  "selection_split": "sequence/source-disjoint validation",
+  "test_split_used": false,
+  "packet_dimension": 82,
+  "routing": {
+    "motion_threshold": 0.18,
+    "defocus_threshold": 0.2,
+    "lowlight_threshold": 0.385,
+    "support_threshold": 0.5,
+    "lowlight_dfpir_weight": 0.4,
+    "mixed_dfpir_weight": 0.075,
+    "gyro_full_scale": 4.0
+  },
+  "matched_training": {
+    "epochs": 70,
+    "optimizer_steps": 4096,
+    "seed": 2026,
+    "loss": {
+      "charbonnier": 1.0,
+      "gradient": 0.15,
+      "detector_feature": 0.2,
+      "detector_supervised": 0.1
+    }
+  },
+  "experts": {
+    "demoe": {
+      "sha256": "743f106d380bd8db5d9020917dbc53e668785c23e3b065fe74defda9f90c4cc8"
+    },
+    "dfpir": {
+      "sha256": "cca8f4b00a2e6468cb8bcd267393082b7c781500a7f10de1da626f4c0ee4caaf"
+    },
+    "instructir": {
+      "sha256": "4d97860f360bf21cffa90011db3c5a14501ed27df9bbd5b743a8ebe8e0bc7ecc"
+    }
+  },
+  "field_policy": {
+    "score": "sum of top 10 confidences",
+    "confidence_floor": 0.05,
+    "gate_margin": 0.1,
+    "restored_confidence_floor": 0.075,
+    "fusion_iou": 0.35,
+    "detector_operating_threshold": 0.2
+  }
+}

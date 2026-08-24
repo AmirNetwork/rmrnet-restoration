@@ -1,0 +1,22 @@
+{
+  "status": "COMPLETE",
+  "source": "experiments/final_rmrp_v50_validation_ledger_20260824/provenance_ledger.json",
+  "test_split_used": false,
+  "tables": [
+    "table_parameterized_validation_gate.tex",
+    "table_pothole_detection.tex",
+    "table_pcm_detection.tex",
+    "table_pcm_crack_detection.tex",
+    "table_practical_metadata_controls.tex",
+    "table_restoration_combined.tex",
+    "table_notation.tex",
+    "table_checkpoint_manifest.tex",
+    "table_baseline_training_audit.tex",
+    "table_task_objective_audit.tex",
+    "table_dataset_split_audit.tex"
+  ],
+  "figures": [
+    "fig_rmrp_architecture.pdf",
+    "fig_rmrp_v50_results.pdf"
+  ]
+}
