@@ -1,0 +1,108 @@
+{
+  "status": "FROZEN_ON_EARLIER_12_FRAME_VALIDATION_SEQUENCE",
+  "policy": "label-free evidence gate with guarded native/restored detector fusion",
+  "equations": {
+    "gate": "a=1[q(I_r)>(1+tau)q(I_d)]",
+    "output": "P_o=P_d if a=0, else NMS_primary(P_d union P_r)"
+  },
+  "constants": {
+    "restored_view": "rmr_fine_eta0p75",
+    "score_kind": "sumsq",
+    "score_confidence_floor": 0.05,
+    "score_kind_grid": [
+      "top3",
+      "top10",
+      "sumsq"
+    ],
+    "gate_margin": 0.0,
+    "gate_margin_grid": [
+      0.0,
+      0.05,
+      0.1,
+      0.2
+    ],
+    "restored_confidence_floor": 0.1,
+    "restored_confidence_floor_grid": [
+      0.01,
+      0.03,
+      0.05,
+      0.075,
+      0.1,
+      0.15,
+      0.2,
+      0.25,
+      0.3
+    ],
+    "fusion_iou": 0.15,
+    "fusion_iou_grid": [
+      0.15,
+      0.25,
+      0.35,
+      0.5
+    ],
+    "duplicate_family": "same primary family: crack or pothole"
+  },
+  "selection_rule": "maximize validation mean(AP@.10, AP@.50), then AP@.10, AP@.50, and F1@.10, among fusion candidates that do not fall below matched DeMoE on validation AP@.10 or AP@.50",
+  "matched_demoe_validation": {
+    "ap10_primary": 0.45000670245323793,
+    "ap50_primary": 0.3497427743856987
+  },
+  "rmr_checkpoint": "runs\\rmrnet_crid_complete_ins_semantic_tdp_public_stage_v8_20260812\\rcadnet_epoch_001.pth",
+  "rmr_checkpoint_sha256": "db7c1aeeadaf171242bf315e86655b91c74bcc8dd562b5684016eef443a97c3b",
+  "native_tile_blending": "overlap accumulation normalized by the actual accumulated weight; the denominator is clamped only by a numerical epsilon",
+  "validation_images": [
+    "Cam1_2026-06-09_14-56-02_capt0360_361.jpg",
+    "Cam1_2026-06-09_14-56-12_capt0440_441.jpg",
+    "Cam1_2026-06-09_14-56-13_capt0445_446.jpg",
+    "Cam1_2026-06-09_14-56-15_capt0465_466.jpg",
+    "Cam1_2026-06-09_14-56-17_capt0480_481.jpg",
+    "Cam1_2026-06-09_14-56-18_capt0485_486.jpg",
+    "Cam1_2026-06-09_14-56-18_capt0490_491.jpg",
+    "Cam1_2026-06-09_14-56-20_capt0500_501.jpg",
+    "Cam1_2026-06-09_14-56-20_capt0505_506.jpg",
+    "Cam1_2026-06-09_14-56-21_capt0510_511.jpg",
+    "Cam1_2026-06-09_14-56-28_capt0570_571.jpg",
+    "Cam1_2026-06-09_14-56-32_capt0600_601.jpg"
+  ],
+  "validation_metrics": {
+    "ap10_primary": 0.4646523756658111,
+    "ap50_primary": 0.3559956062305236,
+    "f1_iou10": 0.16842105263157892,
+    "f1_iou50": 0.12631578947368421,
+    "coverage": 0.7058823529411765
+  },
+  "detector_operating_point": {
+    "threshold": 0.2,
+    "precision10": 0.6956521739130435,
+    "recall10": 0.47058823529411764,
+    "f1_10": 0.5614035087719297,
+    "precision50": 0.6086956521739131,
+    "recall50": 0.4117647058823529,
+    "f1_50": 0.4912280701754386,
+    "coverage": 0.47058823529411764
+  },
+  "restored_frames": [
+    "Cam1_2026-06-09_14-56-02_capt0360_361.jpg",
+    "Cam1_2026-06-09_14-56-12_capt0440_441.jpg",
+    "Cam1_2026-06-09_14-56-13_capt0445_446.jpg",
+    "Cam1_2026-06-09_14-56-15_capt0465_466.jpg",
+    "Cam1_2026-06-09_14-56-20_capt0500_501.jpg",
+    "Cam1_2026-06-09_14-56-20_capt0505_506.jpg",
+    "Cam1_2026-06-09_14-56-32_capt0600_601.jpg"
+  ],
+  "native_frames": [
+    "Cam1_2026-06-09_14-56-17_capt0480_481.jpg",
+    "Cam1_2026-06-09_14-56-18_capt0485_486.jpg",
+    "Cam1_2026-06-09_14-56-18_capt0490_491.jpg",
+    "Cam1_2026-06-09_14-56-21_capt0510_511.jpg",
+    "Cam1_2026-06-09_14-56-28_capt0570_571.jpg"
+  ],
+  "supportive_test_images_or_labels_read_by_this_stage": false,
+  "source_hashes": {
+    "experiments\\crid46_complete_ins_semantic_tdp_public_v8_tilefix_val_20260812\\frozen_selection_before_test.json": "d83ee8b27a484198599a70200ac0abbdb94742800895dc4108f254f7d3f7a286",
+    "tools/restore_native_yolo_split.py": "314a783a17840b0acdec03492bb4c6a729f06c86867b38537acc0b4301f80318",
+    "experiments\\crid46_complete_ins_semantic_tdp_public_v8_tilefix_val_20260812\\val_predictions\\raw.csv": "542f004b0eb6d005ec7d30da354c773005ea49440aca9fd2f1103a94f7475777",
+    "experiments\\crid46_complete_ins_semantic_tdp_public_v8_tilefix_val_20260812\\val_predictions\\rmr_fine_eta0p75.csv": "01090c1fa30008fe1a50c43ba1398b2f6d61ed0bbd757c4f6d6b35c28d575727",
+    "experiments\\crid46_tilefix_guarded_policy_20260812\\val_predictions\\rmr_guarded_dual_view.csv": "20d9e6896e450c088e7db3d9868c0978a2b0bea7617048ae8750af731e4df2f3"
+  }
+}

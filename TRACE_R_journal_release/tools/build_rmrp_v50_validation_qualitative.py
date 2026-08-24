@@ -159,15 +159,23 @@ def match_stats(
 
 
 def predict_paths(model: YOLO, paths: list[Path]) -> list[Any]:
-    return model.predict(
-        source=[str(path) for path in paths],
-        imgsz=640,
-        conf=0.15,
-        iou=0.70,
-        batch=16,
-        device=0,
-        verbose=False,
-    )
+    # Ultralytics materializes an entire list source before batching.  Chunk the
+    # list explicitly so a large validation partition cannot exhaust host RAM;
+    # detector settings and input order remain unchanged.
+    predictions: list[Any] = []
+    for start in range(0, len(paths), 32):
+        predictions.extend(
+            model.predict(
+                source=[str(path) for path in paths[start : start + 32]],
+                imgsz=640,
+                conf=0.15,
+                iou=0.70,
+                batch=16,
+                device=0,
+                verbose=False,
+            )
+        )
+    return predictions
 
 
 def scan_dataset(dataset: str) -> tuple[list[dict[str, Any]], dict[tuple[str, str, str], Any], dict[str, dict[str, dict[str, Path]]]]:

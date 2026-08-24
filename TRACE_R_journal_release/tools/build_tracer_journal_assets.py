@@ -241,7 +241,6 @@ def build_tables(ledger: dict[str, Any]) -> None:
         ),
     )
 
-    crid_val = indexed_csv(CRID_POLICY / "validation_summary.csv")
     crid_later = indexed_csv(CRID_POLICY / "supportive_summary.csv")
     crid_methods = (
         ("raw", "Raw image"),
@@ -251,31 +250,27 @@ def build_tables(ledger: dict[str, Any]) -> None:
         ("instructir", "InstructIR"),
         ("rmr_guarded_dual_view", "TRACE-R"),
     )
-    columns: dict[str, list[float]] = {key: [] for key in ("v10", "v50", "vm", "s10", "s50", "sm")}
+    columns: dict[str, list[float]] = {key: [] for key in ("s10", "s50", "sm")}
     crid_values: dict[str, dict[str, float]] = {}
     for method, _ in crid_methods:
-        v10 = float(crid_val[method]["ap10_primary"])
-        v50 = float(crid_val[method]["ap50_primary"])
         s10 = float(crid_later[method]["ap10_primary"])
         s50 = float(crid_later[method]["ap50_primary"])
-        values = {"v10": v10, "v50": v50, "vm": (v10 + v50) / 2, "s10": s10, "s50": s50, "sm": (s10 + s50) / 2}
+        values = {"s10": s10, "s50": s50, "sm": (s10 + s50) / 2}
         crid_values[method] = values
         for key, value in values.items():
             columns[key].append(value)
     crid_rows = []
     for method, name in crid_methods:
         values = crid_values[method]
-        rendered = [bold(values[key], columns[key]) for key in ("v10", "v50", "vm", "s10", "s50", "sm")]
+        rendered = [bold(values[key], columns[key]) for key in ("s10", "s50", "sm")]
         crid_rows.append(f"{name} & " + " & ".join(rendered) + r" \\")
     write(
         TABLES / "table_crid.tex",
         table(
-            "CRID native-image detection using a frozen detector.",
+            "CRID native-image detection on the 13-frame temporal evaluation block.",
             "tab:crid",
-            "lrrrrrr",
-            "Input & \\multicolumn{3}{c}{Policy block (12)} & \\multicolumn{3}{c}{Later block (13)} \\\\\n"
-            "\\cmidrule(lr){2-4}\\cmidrule(lr){5-7}\n"
-            "& AP@.10 & AP@.50 & Mean & AP@.10 & AP@.50 & Mean",
+            "lrrr",
+            "Input & AP@.10 & AP@.50 & Mean",
             crid_rows,
         ),
     )
@@ -348,46 +343,52 @@ def connector(ax: Any, start: tuple[float, float], end: tuple[float, float]) -> 
 
 
 def build_architecture() -> None:
-    fig, ax = plt.subplots(figsize=(7.16, 2.55))
+    fig, ax = plt.subplots(figsize=(7.16, 3.35))
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.axis("off")
     add_border(ax)
-    ax.text(0.018, 0.95, "TRACE-R inference", fontweight="bold", va="top", fontsize=8)
+    ax.text(0.018, 0.965, "Deployed inference: one automatic output", fontweight="bold", va="top", fontsize=8)
 
-    node(ax, (0.025, 0.60), (0.13, 0.16), "Degraded image\n$ I_d $", "#eef6f7")
-    node(ax, (0.025, 0.25), (0.13, 0.22), "Camera / IMU / vehicle\npacket $m\\in\\mathbb{R}^{82}$", "#fff2e8")
-    node(ax, (0.20, 0.24), (0.18, 0.26), "Physical state $h(m)$\n\nmotion and exposure\nfocus and illumination\nsupport and availability", "#fff2e8")
-    node(ax, (0.43, 0.27), (0.13, 0.20), "Cause router\n$M,D,L,X,F$", "#eef0f8")
-
-    node(ax, (0.61, 0.58), (0.14, 0.12), "DFPIR", "#edf6ef")
-    node(ax, (0.61, 0.42), (0.14, 0.12), "InstructIR", "#edf6ef")
-    node(ax, (0.61, 0.26), (0.14, 0.12), "DeMoE", "#edf6ef")
-    node(ax, (0.81, 0.36), (0.16, 0.26), "Restored output\n\nselected expert or\nvalidation-fixed blend\n\n$ I_o\\in[0,1] $", "#eef0f8")
+    node(ax, (0.020, 0.61), (0.105, 0.14), "Road image\n$ I_d $", "#eef6f7")
+    node(ax, (0.020, 0.29), (0.155, 0.20), "Observable packet $m$\n\nCamera settings\n11 IMU samples\nVehicle state", "#fff2e8")
+    node(ax, (0.215, 0.29), (0.155, 0.22), "Physical state $h(m)$\n\nMotion and vibration\nFocus and illumination\nReliability and masks", "#fff2e8")
+    node(ax, (0.410, 0.31), (0.125, 0.18), "Cause router\n\nexpert weights\n$a_1,\\ldots,a_K$", "#eef0f8")
+    node(ax, (0.575, 0.59), (0.115, 0.105), "DFPIR", "#edf6ef")
+    node(ax, (0.575, 0.455), (0.115, 0.105), "InstructIR", "#edf6ef")
+    node(ax, (0.575, 0.320), (0.115, 0.105), "DeMoE", "#edf6ef")
+    node(ax, (0.730, 0.49), (0.115, 0.17), "Convex restored\ncandidate\n$ I_r=\\sum_j a_jE_j(I_d)$", "#eef0f8")
+    node(ax, (0.730, 0.245), (0.115, 0.145), "Label-free\nevidence guard\n$q(P_d),q(P_r)$", "#f8eedf")
+    node(ax, (0.880, 0.33), (0.100, 0.22), "Final image $I_o$\nand detections\n\nnative or\nrestored evidence", "#eaf4ee")
 
     # Image evidence reaches every expert; telemetry controls only the route.
-    connector(ax, (0.155, 0.68), (0.59, 0.68))
-    ax.plot([0.59, 0.59], [0.32, 0.68], color="black", linewidth=0.65)
-    for y in (0.64, 0.48, 0.32):
-        connector(ax, (0.59, y), (0.61, y))
-    connector(ax, (0.155, 0.36), (0.20, 0.36))
-    connector(ax, (0.38, 0.37), (0.43, 0.37))
-    for y in (0.64, 0.48, 0.32):
-        connector(ax, (0.56, 0.37), (0.61, y))
-    for y in (0.64, 0.48, 0.32):
-        connector(ax, (0.75, y), (0.81, 0.49))
-    ax.text(0.20, 0.19, "Unavailable sensor groups are masked independently", fontsize=5.9)
-    ax.text(0.43, 0.21, "No dataset or corruption label", fontsize=5.9)
+    connector(ax, (0.125, 0.68), (0.555, 0.68))
+    ax.plot([0.555, 0.555], [0.37, 0.68], color="black", linewidth=0.65)
+    for y in (0.642, 0.507, 0.372):
+        connector(ax, (0.555, y), (0.575, y))
+    connector(ax, (0.175, 0.39), (0.215, 0.39))
+    connector(ax, (0.370, 0.40), (0.410, 0.40))
+    for y in (0.642, 0.507, 0.372):
+        connector(ax, (0.535, 0.40), (0.575, y))
+    for y in (0.642, 0.507, 0.372):
+        connector(ax, (0.690, y), (0.730, 0.575))
+    connector(ax, (0.788, 0.49), (0.788, 0.39))
+    connector(ax, (0.845, 0.318), (0.880, 0.42))
+    # The native image is evaluated inside the automatic guard; the operator
+    # receives one output and never chooses a manual restoration switch.
+    ax.plot([0.125, 0.125], [0.585, 0.205], color="black", linewidth=0.60)
+    ax.plot([0.125, 0.700], [0.205, 0.205], color="black", linewidth=0.60)
+    connector(ax, (0.700, 0.205), (0.730, 0.315))
 
-    ax.plot([0.02, 0.98], [0.11, 0.11], color="black", linewidth=0.5)
-    ax.text(0.025, 0.055, "Matched adaptation:", fontweight="bold", va="center")
+    ax.plot([0.02, 0.98], [0.16, 0.16], color="black", linewidth=0.5)
+    ax.text(0.025, 0.085, "Matched adaptation:", fontweight="bold", va="center")
     ax.text(
         0.18,
-        0.055,
+        0.085,
         r"$\mathcal{L}=\mathcal{L}_{char}+\lambda_g\mathcal{L}_{grad}+\lambda_T\mathcal{L}_{TDP}+\lambda_D\mathcal{L}_{det}$",
         va="center",
     )
-    ax.text(0.72, 0.055, "Frozen detector; equal budget", va="center")
+    ax.text(0.72, 0.085, "Frozen detector; equal budget", va="center")
     fig.subplots_adjust(left=0.01, right=0.99, top=0.98, bottom=0.02)
     fig.savefig(FIGURES / "fig_trace_architecture.pdf")
     plt.close(fig)
@@ -399,7 +400,7 @@ def build_controlled_results(ledger: dict[str, Any]) -> None:
     pcm = [float(record(ledger, method)["mean_map50"]["pcm"]) for method in METHODS]
     controls = ledger["metadata_controls"]
 
-    fig, axes = plt.subplots(1, 2, figsize=(7.16, 2.35), gridspec_kw={"width_ratios": [1.45, 1.0]})
+    fig, axes = plt.subplots(1, 2, figsize=(7.16, 2.85), gridspec_kw={"width_ratios": [1.45, 1.0]})
     x = np.arange(len(METHODS))
     width = 0.36
     axes[0].bar(x - width / 2, ivcnz, width, label="IVCNZ", color="#31688e", edgecolor="black", linewidth=0.35)
@@ -430,45 +431,35 @@ def build_controlled_results(ledger: dict[str, Any]) -> None:
 
 
 def build_controlled_qualitative() -> None:
-    import tools.build_rmrp_v50_validation_qualitative as qualitative
+    # Render the frozen examples with the complete matched comparator set.
+    # Selection was performed once by build_rmrp_v50_validation_qualitative;
+    # this renderer only adds the two NAFNet controls and changes the layout.
+    import tools.build_tracer_all_baseline_qualitative as qualitative
 
-    qualitative.PAPER = PAPER
-    qualitative.FIGURES = FIGURES
-    qualitative.OUT = ROOT / "experiments" / "final_trace_r_qualitative_20260824"
-    qualitative.DISPLAY["rmrp"] = "TRACE-R"
-    qualitative.DATASETS["ivcnz"]["figure"] = "fig_trace_ivcnz_qualitative.pdf"
-    qualitative.DATASETS["pcm"]["figure"] = "fig_trace_pcm_qualitative.pdf"
     qualitative.main()
 
 
 def build_crid_results() -> None:
     methods = ("Raw", "NAFNet", "DFPIR", "DeMoE", "InstructIR", "TRACE-R")
     keys = ("raw", "nafnet", "dfpir", "demoe_auto", "instructir", "rmr_guarded_dual_view")
-    validation = indexed_csv(CRID_POLICY / "validation_summary.csv")
     supportive = indexed_csv(CRID_POLICY / "supportive_summary.csv")
-    val_mean = [
-        (float(validation[key]["ap10_primary"]) + float(validation[key]["ap50_primary"])) / 2
-        for key in keys
-    ]
-    later_mean = [
-        (float(supportive[key]["ap10_primary"]) + float(supportive[key]["ap50_primary"])) / 2
-        for key in keys
-    ]
+    ap10 = [float(supportive[key]["ap10_primary"]) for key in keys]
+    ap50 = [float(supportive[key]["ap50_primary"]) for key in keys]
     x = np.arange(len(methods))
     width = 0.36
     fig, ax = plt.subplots(figsize=(3.5, 2.25))
-    colors_a = ["#aeb6bc"] * 5 + ["#278b74"]
-    colors_b = ["#d7dcdf"] * 5 + ["#67b8a6"]
-    ax.bar(x - width / 2, val_mean, width, color=colors_a, edgecolor="black", linewidth=0.4, label="Policy block")
-    ax.bar(x + width / 2, later_mean, width, color=colors_b, edgecolor="black", linewidth=0.4, label="Later block")
+    colors_a = ["#9ca8af"] * 5 + ["#278b74"]
+    colors_b = ["#d2d8dc"] * 5 + ["#67b8a6"]
+    ax.bar(x - width / 2, ap10, width, color=colors_a, edgecolor="black", linewidth=0.4, label="AP@.10")
+    ax.bar(x + width / 2, ap50, width, color=colors_b, edgecolor="black", linewidth=0.4, label="AP@.50")
     ax.set_xticks(x, methods, rotation=25, ha="right")
-    ax.set_ylim(0.25, 0.54)
-    ax.set_ylabel("Mean of AP@.10 and AP@.50")
+    ax.set_ylim(0.38, 0.60)
+    ax.set_ylabel("Average precision")
     ax.legend(frameon=False, ncol=2, loc="upper left")
     ax.grid(axis="y", color="#d7dde1", linewidth=0.45)
     ax.set_axisbelow(True)
     add_border(ax)
-    fig.subplots_adjust(left=0.16, right=0.98, top=0.96, bottom=0.29)
+    fig.subplots_adjust(left=0.15, right=0.98, top=0.96, bottom=0.29)
     fig.savefig(FIGURES / "fig_trace_crid_ap.pdf")
     plt.close(fig)
 
@@ -504,7 +495,7 @@ def build_crid_overlays() -> None:
     wrap_raster(
         crid.PAPER_FIGURE,
         FIGURES / "fig_trace_crid_policy_atlas.pdf",
-        figsize=(7.16, 3.0),
+        figsize=(7.16, 4.0),
     )
     wrap_raster(
         crid.SUPPLEMENT_FIGURE,

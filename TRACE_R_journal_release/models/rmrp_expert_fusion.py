@@ -29,7 +29,13 @@ from rcadnet.practical_metadata import (
 
 @dataclass(frozen=True)
 class TRACERPolicy:
-    """Validation-selected physical thresholds and convex expert weights."""
+    """Validation-selected physical thresholds and convex expert weights.
+
+    Each route stores weights in ``(raw, DeMoE, DFPIR, InstructIR)`` order.
+    Keeping the coefficients in the checkpoint/configuration makes deployment
+    automatic: a user supplies an image and sensor packet and receives one
+    restored image, without selecting an expert by hand.
+    """
 
     motion_threshold: float = 0.18
     defocus_threshold: float = 0.20
@@ -38,6 +44,11 @@ class TRACERPolicy:
     lowlight_dfpir_weight: float = 0.40
     mixed_dfpir_weight: float = 0.075
     gyro_full_scale: float = 4.0
+    fallback_weights: tuple[float, float, float, float] = (0.0, 1.0, 0.0, 0.0)
+    motion_weights: tuple[float, float, float, float] = (0.0, 0.0, 1.0, 0.0)
+    defocus_weights: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 1.0)
+    lowlight_weights: tuple[float, float, float, float] | None = None
+    mixed_weights: tuple[float, float, float, float] | None = None
 
     def __post_init__(self) -> None:
         probability_fields = (
@@ -54,6 +65,35 @@ class TRACERPolicy:
                 raise ValueError(f"{field} must lie in [0, 1], received {value}")
         if self.gyro_full_scale <= 0.0:
             raise ValueError("gyro_full_scale must be positive")
+        if self.lowlight_weights is None:
+            object.__setattr__(
+                self,
+                "lowlight_weights",
+                (0.0, 1.0 - self.lowlight_dfpir_weight, self.lowlight_dfpir_weight, 0.0),
+            )
+        if self.mixed_weights is None:
+            object.__setattr__(
+                self,
+                "mixed_weights",
+                (0.0, 1.0 - self.mixed_dfpir_weight, self.mixed_dfpir_weight, 0.0),
+            )
+        for route in ("fallback", "motion", "defocus", "lowlight", "mixed"):
+            weights = getattr(self, f"{route}_weights")
+            if weights is None or len(weights) != 4:
+                raise ValueError(f"{route}_weights must contain four coefficients")
+            if any(float(weight) < 0.0 for weight in weights):
+                raise ValueError(f"{route}_weights cannot contain negative values")
+            if abs(sum(float(weight) for weight in weights) - 1.0) > 1e-6:
+                raise ValueError(f"{route}_weights must sum to one")
+
+    def weights_for(self, route: str) -> tuple[float, float, float, float]:
+        """Return the locked convex image-fusion coefficients for a route."""
+
+        if route not in ("fallback", "motion", "defocus", "lowlight", "mixed"):
+            raise ValueError(f"Unknown TRACE-R route: {route}")
+        weights = getattr(self, f"{route}_weights")
+        assert weights is not None
+        return weights
 
 
 class TRACERExpertFusion(nn.Module):
@@ -189,31 +229,36 @@ class TRACERExpertFusion(nn.Module):
         return output[..., :height, :width]
 
     def _restore_route(self, image: torch.Tensor, route: str) -> torch.Tensor:
-        if route == "motion":
-            return self._run_padded(self.dfpir, image, 8, "motion")
-        if route == "defocus":
-            return self._run_padded(
+        # Eq. (7): I_r = sum_j a_j(I_d, m) E_j(I_d), a_j >= 0,
+        # sum_j a_j = 1. The physical route chooses validation-locked convex
+        # weights; no detector label or scenario identifier is used here.
+        raw_weight, demoe_weight, dfpir_weight, instructir_weight = (
+            self.policy.weights_for(route)
+        )
+        restored = raw_weight * image
+        if demoe_weight > 0.0:
+            task = "low_light" if route in {"lowlight", "mixed"} else "auto"
+            restored = restored + demoe_weight * self._run_padded(
+                self.demoe, image, 8, task=task
+            )
+        if dfpir_weight > 0.0:
+            task = {
+                "motion": "motion",
+                "defocus": "defocus",
+                "lowlight": "lowlight",
+                "mixed": "mixed_motion_lowlight",
+            }.get(route, "auto")
+            restored = restored + dfpir_weight * self._run_padded(
+                self.dfpir, image, 8, task
+            )
+        if instructir_weight > 0.0:
+            restored = restored + instructir_weight * self._run_padded(
                 self.instructir,
                 image,
                 16,
-                self._instructir_prompt("defocus"),
+                self._instructir_prompt(route),
             )
-        if route == "lowlight":
-            dfpir = self._run_padded(self.dfpir, image, 8, "lowlight")
-            demoe = self._run_padded(self.demoe, image, 8, task="low_light")
-            weight = self.policy.lowlight_dfpir_weight
-            return weight * dfpir + (1.0 - weight) * demoe
-        if route == "mixed":
-            dfpir = self._run_padded(
-                self.dfpir,
-                image,
-                8,
-                "mixed_motion_lowlight",
-            )
-            demoe = self._run_padded(self.demoe, image, 8, task="low_light")
-            weight = self.policy.mixed_dfpir_weight
-            return weight * dfpir + (1.0 - weight) * demoe
-        return self._run_padded(self.demoe, image, 8, task="auto")
+        return restored
 
     @torch.inference_mode()
     def forward(

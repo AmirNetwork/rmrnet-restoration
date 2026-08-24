@@ -1,4 +1,4 @@
-# TRACE-R release integration: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 """Paper-facing entry point for Observability-Gated Inertial Restoration.
 
 OGIR is the inertial-physics configuration of the existing restoration core.

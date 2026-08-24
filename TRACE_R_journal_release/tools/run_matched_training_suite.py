@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# TRACE-R release integration: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 """Run the restartable, matched-budget controlled-restoration training suite.
 
 The suite uses one shared training stream and common optimization objective for

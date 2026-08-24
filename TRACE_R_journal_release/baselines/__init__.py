@@ -1,4 +1,4 @@
-# TRACE-R release integration: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 """Local baseline adapters used by the unified restoration benchmark."""
 
 from .instructir_adapter import InstructIRAdapter

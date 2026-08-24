@@ -1,4 +1,4 @@
-# TRACE-R release integration: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from __future__ import annotations
 
 """Differentiable exposure-motion physics for PI-RMR-Net.

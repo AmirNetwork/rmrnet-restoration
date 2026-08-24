@@ -1,4 +1,4 @@
-# TRACE-R release integration: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 import unittest
 from collections import Counter
 

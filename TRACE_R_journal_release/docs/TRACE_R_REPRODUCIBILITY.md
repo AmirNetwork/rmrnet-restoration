@@ -96,5 +96,5 @@ python tools\build_tracer_journal_assets.py
 ```
 
 The historical `rmrp` ledger key and some filenames are intentionally retained
-to preserve hashes from the executed conference-era pipeline. The public class
+to preserve hashes from the executed earlier-study pipeline. The public class
 and CLI name for the journal method is TRACE-R.

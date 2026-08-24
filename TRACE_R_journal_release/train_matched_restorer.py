@@ -15,7 +15,7 @@ matched suite enables it with an identical coefficient for every expert.
 TRACE-R itself has no learned router: after matched adaptation it composes the
 same selected DFPIR, InstructIR, and DeMoE checkpoints reported as standalone
 baselines. The historical ``rmrp`` model choice remains available only to
-reproduce the conference precursor. That precursor learns a reliability-aware
+reproduce the earlier arXiv model. That model learns a reliability-aware
 corruption state from the public packet:
 
     z_I = g_I(I_d),

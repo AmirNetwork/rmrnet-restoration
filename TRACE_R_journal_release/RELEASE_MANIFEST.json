@@ -1,0 +1,25 @@
+{
+  "status": "VERIFIED_RELEASE_CANDIDATE",
+  "method": "TRACE-R",
+  "method_expansion": "Telemetry-Routed Adaptive Corruption-Expert Restoration",
+  "author": "Amir Ghorbani <amir.ghorbani@rmit.edu.au>",
+  "branch": "trace-r-journal",
+  "controlled_evidence": {
+    "status": "FROZEN_VALIDATION_ONLY",
+    "test_split_used": false,
+    "selection_metric": "unweighted joint mean validation mAP50 over IVCNZ and PCM",
+    "ledger_sha256": "70041f99035c5d254ecb802d92f9687c739265876e1e8a0ad5a1e1896b138fc0"
+  },
+  "paper": {
+    "main_pages": 10,
+    "supplement_pages": 5,
+    "main_pdf_sha256": "7379f9dafbb2e11f71925e70b4a3f3774d9230273a0a2a14d80e3b741d9d775c",
+    "supplement_pdf_sha256": "f04772e560b8600a74a3622e88834e22957760a62cafa3d750c41c7bbc0b35cb"
+  },
+  "source": {
+    "public_router_sha256": "4096302e41574276bf4323ddce96a6af90ce6a9efc1f94d7270600d47ae0cbb1",
+    "executed_router_sha256": "8bb4badfc009ef53636140fec61231eba12ac477e88cef206037cdd2b14cf5c5",
+    "executed_hashes_verified_by": "tests/test_executed_source_provenance.py",
+    "self_contained_tests": "27 passed"
+  }
+}

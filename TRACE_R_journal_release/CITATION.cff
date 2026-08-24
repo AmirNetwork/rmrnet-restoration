@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite the TRACE-R paper, the RMR-P precursor, and this repository."
+message: "If you use this software, please cite the TRACE-R paper, the earlier RMR-P arXiv study, and this repository."
 title: "TRACE-R: Telemetry-Routed Adaptive Corruption-Expert Restoration for Pavement Inspection"
 type: software
 authors:

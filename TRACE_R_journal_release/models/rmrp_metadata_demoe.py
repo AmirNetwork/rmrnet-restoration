@@ -1,4 +1,4 @@
-# TRACE-R release integration: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 """Metadata-routed DeMoE backbone for RMR-P.
 
 This module keeps the released DeMoE image-restoration function and adds a

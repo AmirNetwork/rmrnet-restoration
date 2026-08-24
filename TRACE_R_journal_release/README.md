@@ -9,7 +9,7 @@ DFPIR, InstructIR, or DeMoE experts. Missing sensor groups disable only the
 routes they support. A label-free field policy retains the native detector view
 unless restored evidence improves by a validation-fixed margin.
 
-The journal method extends the earlier RMR-P conference model. RMR-P used one
+The journal method extends the earlier RMR-P arXiv study. RMR-P used one
 metadata-conditioned network; TRACE-R uses a deterministic physical router,
 matched expert checkpoints, explicit partial-metadata handling, packet-content
 interventions, and a native-image detector-evidence guard. Historical `rmrp`
@@ -64,12 +64,17 @@ python -c "import torch; print(torch.__version__, torch.cuda.is_available(), tor
   modality masks, and physical state conversion (paper Eqs. 1-3).
 - `train_matched_restorer.py`: equal-budget expert adaptation and the common
   objective (paper Eq. 6). The historical `rmrp` option reproduces the
-  conference precursor and is not the TRACE-R router.
+  earlier arXiv model and is not the TRACE-R router.
 - `models/tracer_detection_policy.py`: native/restored evidence decision and
   class-family fusion (paper Eqs. 7-8).
 - `tools/restore_yolo_split.py`: TRACE-R and standalone-restorer inference.
 - `tools/validate_tracer_expert_fusion.py`: restartable validation-only audit.
 - `tools/build_tracer_journal_assets.py`: frozen-ledger tables and PDF figures.
+- `paper_ieee_tits_trace_r/`: the manuscript, supplement, bibliography, vector
+  figures, generated tables, and compiled PDFs.
+- `provenance/executed_source/`: hash-matched source files used by the frozen
+  controlled run. The public TRACE-R API is numerically equivalent but carries
+  clearer names, comments, and backward-compatible aliases.
 
 ## Sensor packet
 
@@ -135,8 +140,12 @@ pdflatex supplementary.tex
 ```bat
 .venv\Scripts\activate
 python -m compileall -q models rcadnet tools train_matched_restorer.py
-python -m pytest -q tests\test_tracer_public_api.py tests\test_tracer_detection_policy.py tests\test_rmrp_expert_fusion.py tests\test_practical_metadata.py
+python -m pytest -q tests\test_tracer_public_api.py tests\test_tracer_detection_policy.py tests\test_rmrp_expert_fusion.py tests\test_practical_metadata.py tests\test_executed_source_provenance.py
 ```
+
+The matched-objective and PCGrad tests additionally import the third-party
+DFPIR/DeMoE repositories and can be run after completing their setup in
+`docs/TRACE_R_REPRODUCIBILITY.md`.
 
 Large datasets and third-party checkpoints are not redistributed. Their
 licenses, download sources, expected locations, and retained hashes are listed
