@@ -1,5 +1,5 @@
 {
-  "status": "VERIFIED_RELEASE_CANDIDATE",
+  "status": "VERIFIED_RELEASE",
   "method": "TRACE-R",
   "method_expansion": "Telemetry-Routed Adaptive Corruption-Expert Restoration",
   "author": "Amir Ghorbani <amir.ghorbani@rmit.edu.au>",
