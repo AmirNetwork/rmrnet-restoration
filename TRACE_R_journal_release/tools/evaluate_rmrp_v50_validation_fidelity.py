@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# TRACE-R release integration: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 """Compute paired validation PSNR/SSIM for frozen RMR-P v50 outputs."""
 
 from __future__ import annotations

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# TRACE-R release integration: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 """Freeze the executed RMR-P expert-policy validation into one ledger.
 
 This script performs no training, inference, model selection, or metric

@@ -1,3 +1,4 @@
+# TRACE-R release integration: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from __future__ import annotations
 
 """Geometry-aware supervision for practical motion metadata.

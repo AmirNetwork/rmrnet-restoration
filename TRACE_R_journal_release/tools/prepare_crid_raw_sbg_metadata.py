@@ -1,3 +1,4 @@
+# TRACE-R release integration: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from __future__ import annotations
 
 """Build CRID practical metadata from the directly measured 200 Hz SBG log.

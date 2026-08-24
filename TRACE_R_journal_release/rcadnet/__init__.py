@@ -1,3 +1,4 @@
+# TRACE-R release integration: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from .model import RCADNet
 from .scenario_codes import code_from_scenario, code_from_metadata
 from .task_losses import (
