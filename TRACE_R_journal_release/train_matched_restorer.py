@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Matched target-domain adaptation for the TRACE-R expert bank.
+"""Matched target-domain adaptation for TRACE-R and its restorers.
 
 Every method sees the same balanced stream of paired crops and is optimized
 for the same number of effective batches with the same AdamW schedule.  The
@@ -9,19 +9,23 @@ common objective is used by every restorer:
              + lambda_TDP L_feature + lambda_det L_box/class.
 
 The final term is the clean-normalized supervised objective of the frozen
-dataset detector. It is optional for backward compatibility, but the reported
-matched suite enables it with an identical coefficient for every expert.
+dataset detector. The reported matched suite enables it with an identical
+coefficient for every trained restorer.
 
-TRACE-R itself has no learned router: after matched adaptation it composes the
-same selected DFPIR, InstructIR, and DeMoE checkpoints reported as standalone
-baselines. The historical ``rmrp`` model choice remains available only to
-reproduce the earlier arXiv model. That model learns a reliability-aware
-corruption state from the public packet:
+The ``rmrp`` CLI key is retained for checkpoint compatibility but now builds
+TRACE-R: one DeMoE restoration backbone with hierarchy-wide sensor-conditioned
+low-rank adapters. It learns a reliability-aware corruption state from the
+public 82-field camera/IMU/vehicle packet:
 
     z_I = g_I(I_d),
     z_M = clip[h(m) + r(m) delta tanh(Delta_psi(m)), 0, 1],
-    z = clip[q*z_M + (1-q)*z_I + delta_p tanh p_psi(...), 0, 1],
-    L_RMR-P-precursor = L_common + lambda_z L_cause + lambda_p L_phys.
+    z = r(m) odot z_M + (1-r(m)) odot z_I,
+    x_l' = x_l + alpha_l a_l W_l^up S_l(W_l^down GN(x_l)),
+    L_TRACE-R = L_common + lambda_z L_cause + lambda_p L_phys.
+
+Here ``r(m)`` is coordinate-wise sensor reliability, ``S_l`` is a depthwise
+spatial operator, and ``a_l`` is an image--sensor compatibility gate. The
+model emits one restored image; detector predictions are never combined.
 
 This script deliberately does not evaluate a test split.  It writes epoch
 checkpoints for a separate validation-only selection stage.
@@ -57,11 +61,14 @@ from baselines.nafnet_road import NAFNetRoad
 from models.rmrnet import RMRP
 from models.rmrp_metadata_demoe import RMRPMetadataDeMoE
 from models.rmrp_prompted_dfpir import RMRPPromptedDFPIR
+from models.tracer_sensor_adapter import TRACESensorAdapterDeMoE
+from models.tracer_sparse_wavelet import TRACERSparseDeMoE
 from rcadnet.dataset import PairedRoadRestorationDataset
 from rcadnet.losses import RCADLoss
 from rcadnet.model import RCADNet
 from rcadnet.practical_metadata import balanced_sensor_dropout, perturb_sensor_packet
 from rcadnet.task_losses import (
+    DetectorEvidenceDistillationLoss,
     FrozenDetectorFeatureExtractor,
     FrozenDetectorSupervisedLoss,
     TaskDrivenPerceptualLoss,
@@ -114,11 +121,17 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=1.0,
         help=(
-            "RMR-P-only learning-rate multiplier for identity-initialized "
+            "TRACE-R-only learning-rate multiplier for identity-initialized "
             "sensor-prior fusion and post-prior refinement modules."
         ),
     )
     parser.add_argument("--edge-weight", type=float, default=0.15)
+    parser.add_argument(
+        "--base-weight",
+        type=float,
+        default=1.0,
+        help="Weight of the paired restoration objective.",
+    )
     parser.add_argument("--tdp-weight", type=float, default=0.08)
     parser.add_argument(
         "--detector-supervised-weight",
@@ -130,7 +143,58 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--tdp-input-size", type=int, default=320)
+    parser.add_argument(
+        "--detector-supervised-input-size",
+        type=int,
+        default=0,
+        help="Detector-head supervision size; 0 reuses --tdp-input-size.",
+    )
+    parser.add_argument(
+        "--detector-supervised-letterbox",
+        action="store_true",
+        help=(
+            "Use aspect-preserving Ultralytics geometry for detector-head "
+            "supervision instead of stretching non-square frames."
+        ),
+    )
     parser.add_argument("--tdp-warmup-epochs", type=int, default=3)
+    parser.add_argument(
+        "--evidence-distillation-weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Weight for clean-detector pre-NMS evidence distillation. The "
+            "detector is frozen and is discarded after training."
+        ),
+    )
+    parser.add_argument("--evidence-distillation-topk", type=int, default=96)
+    parser.add_argument(
+        "--evidence-distillation-background-topk", type=int, default=96
+    )
+    parser.add_argument(
+        "--evidence-distillation-box-weight", type=float, default=0.25
+    )
+    parser.add_argument(
+        "--parameter-anchor-weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Mean-squared anchor to the validation-selected initialization for "
+            "trainable parameters; this uses no images or labels."
+        ),
+    )
+    parser.add_argument(
+        "--tdp-layer-names",
+        nargs="+",
+        default=("model.2", "model.4"),
+        help="Frozen detector layers used by task-driven feature alignment.",
+    )
+    parser.add_argument(
+        "--tdp-defect-mask-weight",
+        type=float,
+        default=1.0,
+        help="Extra TDP weight inside transformed training-set defect boxes.",
+    )
     parser.add_argument(
         "--detector-cqmix-probability",
         type=float,
@@ -182,12 +246,12 @@ def parse_args() -> argparse.Namespace:
         "--rmrp-sensor-route-mode",
         choices=("posterior", "physical_fused"),
         default="posterior",
-        help="RMR-P state used for task routing and continuous feature conditioning.",
+        help="TRACE-R state used for task routing and continuous feature conditioning.",
     )
     parser.add_argument(
         "--rmrp-bounded-refiner",
         action="store_true",
-        help="Enable RMR-P's identity-initialized state-conditioned output refiner.",
+        help="Enable TRACE-R's identity-initialized state-conditioned output refiner.",
     )
     parser.add_argument("--rmrp-refiner-gain", type=float, default=0.12)
     parser.add_argument(
@@ -209,6 +273,27 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--rmrp-sensor-task-mixed-expert",
+        type=int,
+        choices=(-1, 0, 1, 2, 3, 4),
+        default=None,
+        help=(
+            "Override the checkpoint's compound motion/low-light expert. "
+            "Use -1 for the historical low-light route."
+        ),
+    )
+    parser.add_argument(
+        "--rmrp-sensor-task-thresholds",
+        type=float,
+        nargs=3,
+        metavar=("MOTION", "DEFOCUS", "LOWLIGHT"),
+        default=None,
+        help=(
+            "Optional training-derived sensor-task thresholds stored in the "
+            "checkpoint. Omit to preserve the initialization."
+        ),
+    )
+    parser.add_argument(
         "--rmrp-semantic-adapters",
         action="store_true",
         help=(
@@ -217,6 +302,42 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--rmrp-semantic-adapter-gain", type=float, default=0.25)
+    parser.add_argument(
+        "--rmrp-cause-feature-adapters",
+        action="store_true",
+        help=(
+            "Enable zero-initialized hierarchy-wide motion, defocus, low-light, "
+            "and compound feature branches selected continuously by observable "
+            "sensor evidence."
+        ),
+    )
+    parser.add_argument("--rmrp-cause-feature-adapter-gain", type=float, default=0.18)
+    parser.add_argument(
+        "--rmrp-freeze-cause-feature-adapters-only",
+        action="store_true",
+        help=(
+            "Freeze the accepted restorer and optimize only the hierarchy-wide "
+            "physical-cause feature branches."
+        ),
+    )
+    parser.add_argument(
+        "--rmrp-train-cause-feature-and-routed-experts",
+        action="store_true",
+        help=(
+            "Freeze the shared trunk and optimize selected physical-cause "
+            "feature branches together with selected internal DeMoE experts."
+        ),
+    )
+    parser.add_argument(
+        "--rmrp-cause-feature-indices",
+        type=int,
+        nargs="+",
+        default=(0, 1, 2, 3),
+        help=(
+            "Cause feature branches opened by staged calibration: "
+            "motion=0, defocus=1, low-light=2, compound=3."
+        ),
+    )
     parser.add_argument(
         "--rmrp-freeze-semantic-adapters-only",
         action="store_true",
@@ -237,8 +358,19 @@ def parse_args() -> argparse.Namespace:
         "--rmrp-freeze-routed-experts-only",
         action="store_true",
         help=(
-            "Freeze the shared DeMoE trunk and RMR-P controller; optimize only "
+            "Freeze the shared DeMoE trunk and TRACE-R controller; optimize only "
             "the DeMoE expert blocks listed by --rmrp-routed-expert-indices."
+        ),
+    )
+    parser.add_argument(
+        "--rmrp-train-feature-and-routed-experts",
+        action="store_true",
+        help=(
+            "Freeze the shared DeMoE trunk, then optimize TRACE-R's hierarchy-wide "
+            "sensor adapters and controller together with only the physically routed "
+            "DeMoE experts listed by --rmrp-routed-expert-indices. This is the staged "
+            "phase-two policy; it retains one restoration output and does not train "
+            "or combine detectors."
         ),
     )
     parser.add_argument(
@@ -257,7 +389,7 @@ def parse_args() -> argparse.Namespace:
         "--rmrp-freeze-backbone",
         action="store_true",
         help=(
-            "Freeze the matched restoration backbone and optimize only RMR-P's "
+            "Freeze the matched restoration backbone and optimize only TRACE-R's "
             "sensor-state, routing, identity-initialized FiLM, and bounded "
             "correction modules."
         ),
@@ -284,7 +416,7 @@ def parse_args() -> argparse.Namespace:
         "--rmrp-freeze-compound-gate-only",
         action="store_true",
         help=(
-            "Freeze all existing RMR-P parameters and calibrate only the newly "
+            "Freeze all existing TRACE-R parameters and calibrate only the newly "
             "enabled compound blend gate."
         ),
     )
@@ -302,7 +434,7 @@ def parse_args() -> argparse.Namespace:
         "--rmrp-compound-refiner",
         action="store_true",
         help=(
-            "Enable RMR-P's identity-initialized residual expert for samples "
+            "Enable TRACE-R's identity-initialized residual expert for samples "
             "whose observable state supports joint motion and low light."
         ),
     )
@@ -465,10 +597,81 @@ class TrainableRestorer(nn.Module):
 
         if kind == "rmrp":
             if len(init_paths) != 1:
-                raise ValueError("RMR-P uses one auditable backbone initialization")
+                raise ValueError("TRACE-R uses one auditable backbone initialization")
             payload = torch.load(init_paths[0], map_location="cpu", weights_only=False)
             source_arch = dict(payload.get("arch", {})) if isinstance(payload, dict) else {}
-            if source_arch.get("backbone") == "demoe_sensor_router":
+            if source_arch.get("backbone") == "demoe_sensor_low_rank":
+                adapter = DeMoEAdapter(None, device=device, smoke=True)
+                model = TRACESensorAdapterDeMoE(
+                    adapter.model,
+                    sensor_gyro_full_scale=float(
+                        source_arch.get("sensor_gyro_full_scale", 4.0)
+                    ),
+                    top_k=int(source_arch.get("top_k", 1)),
+                    use_refiner=bool(source_arch.get("use_refiner", False)),
+                    backbone_route_mode=str(
+                        source_arch.get("backbone_route_mode", "sensor_task")
+                    ),
+                    sensor_task_thresholds=tuple(
+                        source_arch.get(
+                            "sensor_task_thresholds", (0.18, 0.20, 0.385)
+                        )
+                    ),
+                    sensor_task_mixed_expert=source_arch.get(
+                        "sensor_task_mixed_expert"
+                    ),
+                    feature_rank=int(source_arch.get("feature_rank", 16)),
+                    feature_max_gain=float(
+                        source_arch.get("feature_max_gain", 0.25)
+                    ),
+                    use_cause_feature_adapters=bool(
+                        source_arch.get("use_cause_feature_adapters", False)
+                    ),
+                    cause_feature_max_gain=float(
+                        source_arch.get("cause_feature_max_gain", 0.18)
+                    ),
+                ).to(device)
+                incompatible = model.load_state_dict(
+                    payload.get("model", payload), strict=True
+                )
+                missing_keys = list(incompatible.missing_keys)
+                unexpected_keys = list(incompatible.unexpected_keys)
+                initialization_kind = "TRACE-R sensor-conditioned DeMoE checkpoint"
+            elif source_arch.get("backbone") == "demoe_sparse_wavelet":
+                adapter = DeMoEAdapter(None, device=device, smoke=True)
+                model = TRACERSparseDeMoE(
+                    adapter.model,
+                    sensor_gyro_full_scale=float(
+                        source_arch.get("sensor_gyro_full_scale", 4.0)
+                    ),
+                    top_k=int(source_arch.get("top_k", 1)),
+                    use_refiner=False,
+                    backbone_route_mode=str(
+                        source_arch.get("backbone_route_mode", "sensor_task")
+                    ),
+                    sensor_task_thresholds=tuple(
+                        source_arch.get(
+                            "sensor_task_thresholds", (0.18, 0.20, 0.385)
+                        )
+                    ),
+                    sensor_task_mixed_expert=source_arch.get(
+                        "sensor_task_mixed_expert"
+                    ),
+                    wavelet_hidden_channels=int(
+                        source_arch.get("wavelet_hidden_channels", 48)
+                    ),
+                    wavelet_stages=int(source_arch.get("wavelet_stages", 3)),
+                    wavelet_max_residual=float(
+                        source_arch.get("wavelet_max_residual", 0.16)
+                    ),
+                ).to(device)
+                incompatible = model.load_state_dict(
+                    payload.get("model", payload), strict=True
+                )
+                missing_keys = list(incompatible.missing_keys)
+                unexpected_keys = list(incompatible.unexpected_keys)
+                initialization_kind = "TRACE-R sparse-wavelet DeMoE checkpoint"
+            elif source_arch.get("backbone") == "demoe_sensor_router":
                 adapter = DeMoEAdapter(None, device=device, smoke=True)
                 model = RMRPMetadataDeMoE(
                     adapter.model,
@@ -501,8 +704,11 @@ class TrainableRestorer(nn.Module):
                     ),
                     sensor_task_thresholds=tuple(
                         source_arch.get(
-                            "sensor_task_thresholds", (0.18, 0.10, 0.385)
+                            "sensor_task_thresholds", (0.18, 0.20, 0.385)
                         )
+                    ),
+                    sensor_task_mixed_expert=source_arch.get(
+                        "sensor_task_mixed_expert"
                     ),
                     use_semantic_adapters=bool(
                         source_arch.get("use_semantic_adapters", False)
@@ -522,10 +728,10 @@ class TrainableRestorer(nn.Module):
                 )
                 missing_keys = list(incompatible.missing_keys)
                 unexpected_keys = list(incompatible.unexpected_keys)
-                initialization_kind = "RMR-P metadata-routed DeMoE checkpoint"
+                initialization_kind = "TRACE-R metadata-routed DeMoE checkpoint"
             elif source_arch.get("model") == "demoe":
                 # Start from the already matched, target-adapted DeMoE control.
-                # Its expert functions are loaded exactly; RMR-P adds only the
+                # Its expert functions are loaded exactly; TRACE-R adds only the
                 # observable-sensor controller and identity-initialized bounded
                 # correction. This avoids erasing the strongest fair baseline
                 # while the metadata path learns its routing semantics.
@@ -542,7 +748,7 @@ class TrainableRestorer(nn.Module):
                 missing_keys = list(incompatible_backbone.missing_keys)
                 unexpected_keys = list(incompatible_backbone.unexpected_keys)
                 initialization_kind = (
-                    "matched DeMoE backbone plus identity RMR-P metadata modules"
+                    "matched DeMoE backbone plus identity TRACE-R metadata modules"
                 )
             elif init_paths[0].name.lower() == "demoe.pt":
                 adapter = DeMoEAdapter(init_paths[0], device=device, task="scenario")
@@ -555,7 +761,7 @@ class TrainableRestorer(nn.Module):
                 missing_keys = []
                 unexpected_keys = []
                 initialization_kind = (
-                    "official DeMoE backbone plus identity RMR-P metadata modules"
+                    "official DeMoE backbone plus identity TRACE-R metadata modules"
                 )
             elif source_arch.get("backbone") == "dfpir_sensor_prompt":
                 adapter = DFPIRAdapter(None, device=str(device), use_clip=False)
@@ -594,7 +800,7 @@ class TrainableRestorer(nn.Module):
                 incompatible = model.load_state_dict(payload.get("model", payload), strict=False)
                 missing_keys = list(incompatible.missing_keys)
                 unexpected_keys = list(incompatible.unexpected_keys)
-                initialization_kind = "RMR-P prompted-DFPIR checkpoint"
+                initialization_kind = "TRACE-R prompted-DFPIR checkpoint"
             elif "DFPIR" in init_paths[0].name.upper():
                 adapter = DFPIRAdapter(init_paths[0], device=str(device), use_clip=True)
                 prompt_embeddings = torch.cat(
@@ -617,7 +823,7 @@ class TrainableRestorer(nn.Module):
                 ).to(device)
                 missing_keys = []
                 unexpected_keys = []
-                initialization_kind = "official DFPIR backbone plus identity RMR-P metadata modules"
+                initialization_kind = "official DFPIR backbone plus identity TRACE-R metadata modules"
             else:
                 averaged, legacy_payload = average_state_dicts(init_paths)
                 kwargs = rmrp_architecture(legacy_payload)
@@ -629,13 +835,13 @@ class TrainableRestorer(nn.Module):
                 self.model = legacy_model
                 self.arch = dict(legacy_payload.get("arch", {}))
                 self.arch.update(kwargs)
-                self.arch["method_name"] = "RMR-P"
+                self.arch["method_name"] = "TRACE-R"
                 self.load_report.update(
                     {
                         "missing_keys": list(incompatible.missing_keys),
                         "unexpected_keys": list(incompatible.unexpected_keys),
                         "model_soup_members": len(init_paths),
-                        "initialization_kind": "legacy compact RMR-P",
+                        "initialization_kind": "legacy compact TRACE-R",
                     }
                 )
                 model = None
@@ -644,8 +850,22 @@ class TrainableRestorer(nn.Module):
                 if isinstance(model, RMRPMetadataDeMoE):
                     self.arch = {
                         "model": "rmrp",
-                        "method_name": "RMR-P",
-                        "backbone": "demoe_sensor_router",
+                        "method_name": (
+                            "TRACE-R"
+                            if isinstance(
+                                model, (TRACERSparseDeMoE, TRACESensorAdapterDeMoE)
+                            )
+                            else "TRACE-R"
+                        ),
+                        "backbone": (
+                            "demoe_sensor_low_rank"
+                            if isinstance(model, TRACESensorAdapterDeMoE)
+                            else (
+                                "demoe_sparse_wavelet"
+                                if isinstance(model, TRACERSparseDeMoE)
+                                else "demoe_sensor_router"
+                            )
+                        ),
                         "sensor_dim": 82,
                         "sensor_gyro_full_scale": float(
                             model.sensor_gyro_full_scale
@@ -669,6 +889,7 @@ class TrainableRestorer(nn.Module):
                         "sensor_task_thresholds": list(
                             model.sensor_task_thresholds
                         ),
+                        "sensor_task_mixed_expert": model.sensor_task_mixed_expert,
                         "use_semantic_adapters": bool(
                             model.use_semantic_adapters
                         ),
@@ -677,10 +898,42 @@ class TrainableRestorer(nn.Module):
                         ),
                         "scenario_labels_at_inference": False,
                     }
+                    if isinstance(model, TRACERSparseDeMoE):
+                        self.arch.update(
+                            {
+                                "wavelet_hidden_channels": int(
+                                    model.wavelet_hidden_channels
+                                ),
+                                "wavelet_stages": int(model.wavelet_stages),
+                                "wavelet_max_residual": float(
+                                    model.wavelet_max_residual
+                                ),
+                                "sparse_transform": "invertible_haar",
+                                "identity_initialized_sparse_residual": True,
+                            }
+                        )
+                    if isinstance(model, TRACESensorAdapterDeMoE):
+                        self.arch.update(
+                            {
+                                "feature_rank": int(model.feature_rank),
+                                "feature_max_gain": float(model.feature_max_gain),
+                                "feature_adapter_stages": list(
+                                    model.feature_channels.keys()
+                                ),
+                                "identity_initialized_feature_adapters": True,
+                                "single_restoration_output": True,
+                                "use_cause_feature_adapters": bool(
+                                    model.use_cause_feature_adapters
+                                ),
+                                "cause_feature_max_gain": float(
+                                    model.cause_feature_max_gain
+                                ),
+                            }
+                        )
                 else:
                     self.arch = {
                         "model": "rmrp",
-                        "method_name": "RMR-P",
+                        "method_name": "TRACE-R",
                         "backbone": "dfpir_sensor_prompt",
                         "sensor_dim": 82,
                         "sensor_gyro_full_scale": float(model.sensor_gyro_full_scale),
@@ -722,7 +975,7 @@ class TrainableRestorer(nn.Module):
             # A sensor-conditioned NAFNet control starts from exactly the same
             # road-trained image function as NAFNet. CodeFiLM is initialized to
             # identity, so any later gain must be learned from the same public
-            # 82-value packet and matched target-adaptation stream as RMR-P.
+            # 82-value packet and matched target-adaptation stream as TRACE-R.
             averaged, payload = average_state_dicts(init_paths)
             width = int(payload.get("arch", {}).get("width", 32))
             self.model = MetadataNAFNetRoad(width=width, code_dim=82).to(device)
@@ -1163,40 +1416,61 @@ def build_detector_losses(
     detectors: Sequence[tuple[str, Path]],
     device: torch.device,
     input_size: int,
+    supervised_input_size: int,
+    supervised_letterbox: bool,
     cqmix_probability: float,
     clean_hinge_weight: float,
+    layer_names: Sequence[str],
+    defect_mask_weight: float,
+    evidence_foreground_topk: int,
+    evidence_background_topk: int,
+    evidence_box_weight: float,
 ) -> tuple[
     dict[str, TaskDrivenPerceptualLoss],
     dict[str, FrozenDetectorSupervisedLoss],
+    dict[str, DetectorEvidenceDistillationLoss],
 ]:
     from ultralytics import YOLO
 
     tdp_result: dict[str, TaskDrivenPerceptualLoss] = {}
     supervised_result: dict[str, FrozenDetectorSupervisedLoss] = {}
+    evidence_result: dict[str, DetectorEvidenceDistillationLoss] = {}
     for tag, weights in detectors:
         detector = YOLO(str(weights)).model.to(device).eval()
         # Keep the executable Ultralytics DetectionModel intact. Backbone
         # hooks are addressed through its internal module-list namespace.
         extractor = FrozenDetectorFeatureExtractor(
             detector,
-            layer_names=("model.2", "model.4"),
+            layer_names=tuple(layer_names),
             input_size=(input_size, input_size),
             verbose=True,
         )
         tdp_result[tag] = TaskDrivenPerceptualLoss(
             extractor,
-            layer_weights={"model.2": 0.5, "model.4": 1.0},
+            layer_weights={
+                name: 0.5 + 0.5 * index
+                for index, name in enumerate(layer_names)
+            },
             cqmix_prob=0.0,
-            defect_mask_weight=1.0,
+            defect_mask_weight=defect_mask_weight,
             normalize_features=True,
         )
         supervised_result[tag] = FrozenDetectorSupervisedLoss(
             detector,
-            input_size=(input_size, input_size),
+            input_size=(supervised_input_size, supervised_input_size),
+            letterbox=supervised_letterbox,
             cqmix_prob=cqmix_probability,
             clean_hinge_weight=clean_hinge_weight,
         )
-    return tdp_result, supervised_result
+        evidence_result[tag] = DetectorEvidenceDistillationLoss(
+            detector,
+            input_size=(input_size, input_size),
+            letterbox=True,
+            foreground_topk=evidence_foreground_topk,
+            background_topk=evidence_background_topk,
+            box_weight=evidence_box_weight,
+        )
+    return tdp_result, supervised_result, evidence_result
 
 
 def grouped_tdp(
@@ -1204,6 +1478,7 @@ def grouped_tdp(
     restored: torch.Tensor,
     target: torch.Tensor,
     tags: Sequence[str],
+    defect_mask: torch.Tensor | None = None,
 ) -> torch.Tensor:
     total = restored.new_zeros(())
     count = 0
@@ -1213,10 +1488,66 @@ def grouped_tdp(
         total = total + len(indices) * losses[tag](
             restored.index_select(0, idx),
             target.index_select(0, idx),
+            defect_mask=(
+                defect_mask.index_select(0, idx)
+                if defect_mask is not None
+                else None
+            ),
             use_cqmix=False,
         )
         count += len(indices)
     return total / max(count, 1)
+
+
+def grouped_evidence_distillation(
+    losses: dict[str, DetectorEvidenceDistillationLoss],
+    restored: torch.Tensor,
+    target: torch.Tensor,
+    tags: Sequence[str],
+) -> torch.Tensor:
+    """Average clean-detector evidence matching across dataset detectors."""
+
+    total = restored.new_zeros(())
+    count = 0
+    for tag in sorted(set(tags)):
+        indices = [index for index, value in enumerate(tags) if value == tag]
+        idx = torch.tensor(indices, device=restored.device, dtype=torch.long)
+        total = total + len(indices) * losses[tag](
+            restored.index_select(0, idx),
+            target.index_select(0, idx),
+        )
+        count += len(indices)
+    return total / max(count, 1)
+
+
+def detector_box_mask(
+    bboxes: torch.Tensor,
+    valid: torch.Tensor,
+    height: int,
+    width: int,
+    *,
+    context_scale: float = 1.20,
+) -> torch.Tensor:
+    """Rasterize normalized ``xywh`` training boxes for defect-weighted TDP.
+
+    Boxes have already undergone the same crop and flip as the image.  A small
+    context expansion includes crack rims and pavement texture immediately
+    outside the annotation without exposing validation/test labels.
+    """
+
+    mask = bboxes.new_zeros((bboxes.shape[0], 1, height, width))
+    for batch_index in range(bboxes.shape[0]):
+        for box in bboxes[batch_index][valid[batch_index].to(torch.bool)]:
+            cx, cy, box_width, box_height = box
+            half_width = 0.5 * context_scale * box_width
+            half_height = 0.5 * context_scale * box_height
+            x1 = int(torch.floor((cx - half_width) * width).clamp(0, width).item())
+            x2 = int(torch.ceil((cx + half_width) * width).clamp(0, width).item())
+            y1 = int(torch.floor((cy - half_height) * height).clamp(0, height).item())
+            y2 = int(torch.ceil((cy + half_height) * height).clamp(0, height).item())
+            if x2 > x1 and y2 > y1:
+                mask[batch_index, :, y1:y2, x1:x2] = 1.0
+    return mask
 
 
 def grouped_detector_supervised(
@@ -1269,7 +1600,7 @@ def save_checkpoint(
         "scheduler": scheduler.state_dict(),
         "args": vars(args),
         "metrics": row,
-        "method_name": "RMR-P" if restorer.kind == "rmrp" else restorer.kind,
+        "method_name": "TRACE-R" if restorer.kind == "rmrp" else restorer.kind,
     }
     torch.save(payload, path)
     if restorer.kind == "instructir":
@@ -1400,6 +1731,22 @@ def main() -> None:
         raise ValueError("detector_cqmix_probability must be in [0, 1]")
     if args.detector_clean_hinge_weight < 0.0:
         raise ValueError("detector_clean_hinge_weight must be non-negative")
+    if args.tdp_defect_mask_weight < 0.0:
+        raise ValueError("tdp_defect_mask_weight must be non-negative")
+    for name in (
+        "base_weight",
+        "evidence_distillation_weight",
+        "evidence_distillation_box_weight",
+        "parameter_anchor_weight",
+    ):
+        if float(getattr(args, name)) < 0.0:
+            raise ValueError(f"{name} must be non-negative")
+    if args.evidence_distillation_topk < 1:
+        raise ValueError("evidence_distillation_topk must be positive")
+    if args.evidence_distillation_background_topk < 0:
+        raise ValueError("evidence_distillation_background_topk must be non-negative")
+    if not args.tdp_layer_names:
+        raise ValueError("at least one TDP detector layer is required")
     if args.metadata_curriculum_epochs < 0:
         raise ValueError("metadata_curriculum_epochs must be non-negative")
     if args.metadata_curriculum_ramp_epochs < 0:
@@ -1422,23 +1769,48 @@ def main() -> None:
     if not routed_expert_indices:
         raise ValueError("--rmrp-routed-expert-indices cannot be empty")
     if any(index < 0 or index > 4 for index in routed_expert_indices):
-        raise ValueError("RMR-P routed expert indices must be in [0, 4]")
+        raise ValueError("TRACE-R routed expert indices must be in [0, 4]")
     args.rmrp_routed_expert_indices = list(routed_expert_indices)
+    cause_feature_indices = tuple(dict.fromkeys(args.rmrp_cause_feature_indices))
+    if not cause_feature_indices:
+        raise ValueError("--rmrp-cause-feature-indices cannot be empty")
+    if any(index < 0 or index > 3 for index in cause_feature_indices):
+        raise ValueError("TRACE-R cause feature indices must be in [0, 3]")
+    args.rmrp_cause_feature_indices = list(cause_feature_indices)
     if args.rmrp_freeze_semantic_adapters_only and not args.rmrp_semantic_adapters:
         raise ValueError(
             "--rmrp-freeze-semantic-adapters-only requires --rmrp-semantic-adapters"
+        )
+    if (
+        args.rmrp_freeze_cause_feature_adapters_only
+        and not args.rmrp_cause_feature_adapters
+    ):
+        raise ValueError(
+            "--rmrp-freeze-cause-feature-adapters-only requires "
+            "--rmrp-cause-feature-adapters"
+        )
+    if (
+        args.rmrp_train_cause_feature_and_routed_experts
+        and not args.rmrp_cause_feature_adapters
+    ):
+        raise ValueError(
+            "--rmrp-train-cause-feature-and-routed-experts requires "
+            "--rmrp-cause-feature-adapters"
         )
     exclusive_calibrations = sum(
         bool(value)
         for value in (
             args.rmrp_freeze_cause_refiners_only,
             args.rmrp_freeze_routed_experts_only,
+            args.rmrp_train_feature_and_routed_experts,
             args.rmrp_freeze_compound_gate_only,
             args.rmrp_freeze_semantic_adapters_only,
+            args.rmrp_freeze_cause_feature_adapters_only,
+            args.rmrp_train_cause_feature_and_routed_experts,
         )
     )
     if exclusive_calibrations > 1:
-        raise ValueError("RMR-P calibration-only modes are mutually exclusive")
+        raise ValueError("TRACE-R calibration-only modes are mutually exclusive")
     if (
         args.rmrp_compound_metadata_acceptance is not None
         and not 0.0 <= args.rmrp_compound_metadata_acceptance <= 1.0
@@ -1475,7 +1847,7 @@ def main() -> None:
         restorer.model.compound_motion_blend = float(args.rmrp_compound_motion_blend)
         if args.rmrp_freeze_backbone:
             # Keep the matched DFPIR image prior fixed while learning only the
-            # zero-initialized FiLM layers inserted by RMR-P.  These adapters
+            # zero-initialized FiLM layers inserted by TRACE-R. These adapters
             # live inside ``backbone`` and therefore must be re-enabled after
             # freezing the original DFPIR parameters.
             for name, parameter in restorer.model.backbone.named_parameters():
@@ -1484,7 +1856,7 @@ def main() -> None:
             for parameter in restorer.model.parameters():
                 parameter.requires_grad_(False)
             if restorer.model.cause_refiners is None:
-                raise RuntimeError("RMR-P cause refiners were not enabled")
+                raise RuntimeError("TRACE-R cause refiners were not enabled")
             for parameter in restorer.model.cause_refiners.parameters():
                 parameter.requires_grad_(True)
         restorer.arch.update(
@@ -1510,6 +1882,18 @@ def main() -> None:
         )
     if args.model == "rmrp" and isinstance(restorer.model, RMRPMetadataDeMoE):
         restorer.model.backbone_route_mode = str(args.rmrp_backbone_route_mode)
+        if args.rmrp_sensor_task_thresholds is not None:
+            if any(value < 0.0 or value > 1.0 for value in args.rmrp_sensor_task_thresholds):
+                raise ValueError("TRACE-R sensor-task thresholds must be in [0, 1]")
+            restorer.model.sensor_task_thresholds = tuple(
+                float(value) for value in args.rmrp_sensor_task_thresholds
+            )
+        if args.rmrp_sensor_task_mixed_expert is not None:
+            restorer.model.sensor_task_mixed_expert = (
+                None
+                if args.rmrp_sensor_task_mixed_expert < 0
+                else args.rmrp_sensor_task_mixed_expert
+            )
         if args.rmrp_bounded_refiner:
             restorer.model.enable_bounded_refiner(args.rmrp_refiner_gain)
         if args.rmrp_cause_refiners:
@@ -1517,6 +1901,15 @@ def main() -> None:
         if args.rmrp_semantic_adapters:
             restorer.model.enable_semantic_adapters(
                 args.rmrp_semantic_adapter_gain
+            )
+        if args.rmrp_cause_feature_adapters:
+            if not isinstance(restorer.model, TRACESensorAdapterDeMoE):
+                raise RuntimeError(
+                    "--rmrp-cause-feature-adapters requires a "
+                    "demoe_sensor_low_rank TRACE-R checkpoint"
+                )
+            restorer.model.enable_cause_feature_adapters(
+                args.rmrp_cause_feature_adapter_gain
             )
         if args.rmrp_compound_blend_gate and not restorer.model.use_compound_blend_gate:
             restorer.model.enable_compound_blend_gate(args.rmrp_compound_blend_init)
@@ -1531,26 +1924,81 @@ def main() -> None:
             for parameter in restorer.model.parameters():
                 parameter.requires_grad_(False)
             if restorer.model.compound_blend_head is None:
-                raise RuntimeError("RMR-P compound blend head was not enabled")
+                raise RuntimeError("TRACE-R compound blend head was not enabled")
             for parameter in restorer.model.compound_blend_head.parameters():
                 parameter.requires_grad_(True)
         if args.rmrp_freeze_cause_refiners_only:
             for parameter in restorer.model.parameters():
                 parameter.requires_grad_(False)
             if restorer.model.cause_refiners is None:
-                raise RuntimeError("RMR-P cause refiners were not enabled")
+                raise RuntimeError("TRACE-R cause refiners were not enabled")
             for parameter in restorer.model.cause_refiners.parameters():
                 parameter.requires_grad_(True)
         if args.rmrp_freeze_semantic_adapters_only:
             for parameter in restorer.model.parameters():
                 parameter.requires_grad_(False)
             if restorer.model.semantic_adapters is None:
-                raise RuntimeError("RMR-P semantic adapters were not enabled")
+                raise RuntimeError("TRACE-R semantic adapters were not enabled")
             for parameter in restorer.model.semantic_adapters.parameters():
                 parameter.requires_grad_(True)
+        if args.rmrp_freeze_cause_feature_adapters_only:
+            for parameter in restorer.model.parameters():
+                parameter.requires_grad_(False)
+            if not isinstance(restorer.model, TRACESensorAdapterDeMoE):
+                raise RuntimeError(
+                    "cause feature adapters require demoe_sensor_low_rank"
+                )
+            if not restorer.model.use_cause_feature_adapters:
+                raise RuntimeError("TRACE-R cause feature adapters were not enabled")
+            for parameter in restorer.model.cause_feature_adapters.parameters():
+                parameter.requires_grad_(True)
+        if args.rmrp_train_cause_feature_and_routed_experts:
+            if not isinstance(restorer.model, TRACESensorAdapterDeMoE):
+                raise RuntimeError(
+                    "cause feature/expert training requires demoe_sensor_low_rank"
+                )
+            if not restorer.model.use_cause_feature_adapters:
+                raise RuntimeError("TRACE-R cause feature adapters were not enabled")
+            for parameter in restorer.model.parameters():
+                parameter.requires_grad_(False)
+            for stage in restorer.model.cause_feature_adapters.values():
+                for cause_index in cause_feature_indices:
+                    for parameter in stage[cause_index].parameters():
+                        parameter.requires_grad_(True)
+            for block in restorer.model.backbone.experts:
+                for expert_index in routed_expert_indices:
+                    for parameter in block.experts[expert_index].parameters():
+                        parameter.requires_grad_(True)
         if args.rmrp_freeze_routed_experts_only:
             for parameter in restorer.model.parameters():
                 parameter.requires_grad_(False)
+            for block in restorer.model.backbone.experts:
+                for expert_index in routed_expert_indices:
+                    for parameter in block.experts[expert_index].parameters():
+                        parameter.requires_grad_(True)
+        if args.rmrp_train_feature_and_routed_experts:
+            if not isinstance(restorer.model, TRACESensorAdapterDeMoE):
+                raise RuntimeError(
+                    "--rmrp-train-feature-and-routed-experts requires a "
+                    "demoe_sensor_low_rank TRACE-R checkpoint"
+                )
+            for parameter in restorer.model.parameters():
+                parameter.requires_grad_(False)
+            # Manuscript Eqs. (posterior)--(adaptergate): jointly adapt the
+            # observable-state controller and the
+            # hierarchy-wide low-rank residuals. The detector remains frozen.
+            for module in (
+                restorer.model.sensor_encoder,
+                restorer.model.image_state,
+                restorer.model.posterior_refine,
+                restorer.model.route_residual,
+                restorer.model.feature_adapters,
+            ):
+                for parameter in module.parameters():
+                    parameter.requires_grad_(True)
+            # Only experts named by a physically observable corruption cause are
+            # opened at a low core learning rate. The shared encoder/decoder,
+            # image router, and unrelated experts remain fixed.
             for block in restorer.model.backbone.experts:
                 for expert_index in routed_expert_indices:
                     for parameter in block.experts[expert_index].parameters():
@@ -1576,6 +2024,7 @@ def main() -> None:
                 "sensor_task_thresholds": list(
                     restorer.model.sensor_task_thresholds
                 ),
+                "sensor_task_mixed_expert": restorer.model.sensor_task_mixed_expert,
                 "use_semantic_adapters": bool(
                     restorer.model.use_semantic_adapters
                 ),
@@ -1585,6 +2034,22 @@ def main() -> None:
                 "semantic_adapter_acceptance": list(
                     restorer.model.semantic_adapter_acceptance
                 ),
+                "use_cause_feature_adapters": bool(
+                    isinstance(restorer.model, TRACESensorAdapterDeMoE)
+                    and restorer.model.use_cause_feature_adapters
+                ),
+                "cause_feature_max_gain": float(
+                    restorer.model.cause_feature_max_gain
+                    if isinstance(restorer.model, TRACESensorAdapterDeMoE)
+                    else 0.0
+                ),
+                "cause_feature_adapters_only_calibration": bool(
+                    args.rmrp_freeze_cause_feature_adapters_only
+                ),
+                "cause_feature_and_routed_experts_training": bool(
+                    args.rmrp_train_cause_feature_and_routed_experts
+                ),
+                "cause_feature_indices": list(cause_feature_indices),
                 "semantic_adapters_only_calibration": bool(
                     args.rmrp_freeze_semantic_adapters_only
                 ),
@@ -1593,6 +2058,9 @@ def main() -> None:
                 ),
                 "routed_experts_only_calibration": bool(
                     args.rmrp_freeze_routed_experts_only
+                ),
+                "feature_and_routed_experts_training": bool(
+                    args.rmrp_train_feature_and_routed_experts
                 ),
                 "routed_expert_indices": list(routed_expert_indices),
                 "compound_gate_only_calibration": bool(
@@ -1603,19 +2071,37 @@ def main() -> None:
                     args.rmrp_freeze_backbone
                     or args.rmrp_freeze_compound_gate_only
                     or args.rmrp_freeze_semantic_adapters_only
+                    or args.rmrp_freeze_cause_feature_adapters_only
                 ),
                 "shared_backbone_frozen_during_routed_expert_calibration": bool(
                     args.rmrp_freeze_routed_experts_only
+                    or args.rmrp_train_feature_and_routed_experts
+                    or args.rmrp_train_cause_feature_and_routed_experts
                 ),
             }
         )
     common_loss = RCADLoss(edge_weight=args.edge_weight, profile="simple").to(device)
-    tdp_losses, detector_supervised_losses = build_detector_losses(
+    (
+        tdp_losses,
+        detector_supervised_losses,
+        evidence_distillation_losses,
+    ) = build_detector_losses(
         detector_paths,
         device,
         args.tdp_input_size,
+        (
+            args.detector_supervised_input_size
+            if args.detector_supervised_input_size > 0
+            else args.tdp_input_size
+        ),
+        args.detector_supervised_letterbox,
         args.detector_cqmix_probability,
         args.detector_clean_hinge_weight,
+        args.tdp_layer_names,
+        args.tdp_defect_mask_weight,
+        args.evidence_distillation_topk,
+        args.evidence_distillation_background_topk,
+        args.evidence_distillation_box_weight,
     )
 
     trainable_named = [
@@ -1623,6 +2109,10 @@ def main() -> None:
         for name, parameter in restorer.named_parameters()
         if parameter.requires_grad
     ]
+    parameter_anchor = {
+        name: parameter.detach().clone()
+        for name, parameter in trainable_named
+    } if args.parameter_anchor_weight > 0.0 else {}
     new_module_tokens = (
         "model.sensor_prior_fusion.",
         "model.post_prior_evidence_refiner.",
@@ -1636,6 +2126,9 @@ def main() -> None:
         "model.compound_blend_head.",
         "model.cause_refiners.",
         "model.semantic_adapters.",
+        "model.wavelet_refiner.",
+        "model.feature_adapters.",
+        "model.cause_feature_adapters.",
     )
     new_module_parameters = [
         parameter
@@ -1669,10 +2162,17 @@ def main() -> None:
     )
     steps_per_epoch = math.ceil(args.samples_per_epoch / args.effective_batch_size)
     total_steps = max(1, args.epochs * steps_per_epoch)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+    # Apply the same cosine multiplier to every parameter group. A single
+    # absolute eta_min would collapse the higher-rate identity-initialized
+    # adapter group to the core learning-rate floor at the end of each run.
+    def lr_multiplier(step: int) -> float:
+        progress = min(max(step, 0), total_steps) / float(total_steps)
+        cosine = 0.5 * (1.0 + math.cos(math.pi * progress))
+        return args.min_lr_ratio + (1.0 - args.min_lr_ratio) * cosine
+
+    scheduler = torch.optim.lr_scheduler.LambdaLR(
         optimizer,
-        T_max=total_steps,
-        eta_min=args.lr * args.min_lr_ratio,
+        lr_lambda=lr_multiplier,
     )
     uses_dfpir_backbone = args.model == "dfpir" or restorer.arch.get("backbone") == "dfpir_sensor_prompt"
     # PCGrad stores and projects unscaled per-domain gradients. Running that
@@ -1683,7 +2183,15 @@ def main() -> None:
         and not uses_dfpir_backbone
         and not args.dataset_gradient_surgery
     )
-    scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
+    # Dense detector-logit distillation can overflow the default 2**16 AMP
+    # scale on its first full-frame update. A conservative initial scale keeps
+    # that update finite while retaining mixed-precision memory savings.
+    scaler = torch.amp.GradScaler(
+        "cuda",
+        enabled=use_amp,
+        init_scale=1024.0,
+        growth_interval=2000,
+    )
 
     start_epoch = 1
     global_step = 0
@@ -1718,11 +2226,19 @@ def main() -> None:
                     "rmrp_cause_refiner_gain",
                     "rmrp_freeze_cause_refiners_only",
                     "rmrp_freeze_routed_experts_only",
+                    "rmrp_train_feature_and_routed_experts",
                     "rmrp_routed_expert_indices",
                     "rmrp_backbone_route_mode",
+                    "rmrp_sensor_task_mixed_expert",
+                    "rmrp_sensor_task_thresholds",
                     "rmrp_semantic_adapters",
                     "rmrp_semantic_adapter_gain",
                     "rmrp_freeze_semantic_adapters_only",
+                    "rmrp_cause_feature_adapters",
+                    "rmrp_cause_feature_adapter_gain",
+                    "rmrp_freeze_cause_feature_adapters_only",
+                    "rmrp_train_cause_feature_and_routed_experts",
+                    "rmrp_cause_feature_indices",
                     "rmrp_freeze_backbone",
                     "rmrp_compound_blend_gate",
                     "rmrp_compound_blend_init",
@@ -1744,11 +2260,19 @@ def main() -> None:
             "rmrp_cause_refiner_gain": 0.08,
             "rmrp_freeze_cause_refiners_only": False,
             "rmrp_freeze_routed_experts_only": False,
+            "rmrp_train_feature_and_routed_experts": False,
             "rmrp_routed_expert_indices": [0, 3, 4],
             "rmrp_backbone_route_mode": "metadata",
+            "rmrp_sensor_task_mixed_expert": None,
+            "rmrp_sensor_task_thresholds": None,
             "rmrp_semantic_adapters": False,
             "rmrp_semantic_adapter_gain": 0.25,
             "rmrp_freeze_semantic_adapters_only": False,
+            "rmrp_cause_feature_adapters": False,
+            "rmrp_cause_feature_adapter_gain": 0.18,
+            "rmrp_freeze_cause_feature_adapters_only": False,
+            "rmrp_train_cause_feature_and_routed_experts": False,
+            "rmrp_cause_feature_indices": [0, 1, 2, 3],
             "rmrp_freeze_backbone": False,
             "rmrp_compound_refiner": False,
             "rmrp_compound_refiner_gain": 0.18,
@@ -1780,7 +2304,7 @@ def main() -> None:
         "test_split_used": False,
         "selection": "external validation-only detector mAP",
         "model": args.model,
-        "method_display": "RMR-P" if args.model == "rmrp" else args.model,
+        "method_display": "TRACE-R" if args.model == "rmrp" else args.model,
         "training_roots": {tag: str(path) for tag, path in roots},
         "scenarios": list(scenarios),
         "group_counts": group_counts,
@@ -1797,14 +2321,38 @@ def main() -> None:
             for index, group in enumerate(optimizer_groups)
         },
         "common_objective": {
-            "charbonnier": 1.0,
+            "charbonnier": args.base_weight,
             "gradient": args.edge_weight,
             "detector_feature": args.tdp_weight,
             "detector_supervised": args.detector_supervised_weight,
+            "detector_supervised_input_size": (
+                args.detector_supervised_input_size
+                if args.detector_supervised_input_size > 0
+                else args.tdp_input_size
+            ),
+            "detector_supervised_letterbox": bool(
+                args.detector_supervised_letterbox
+            ),
+            "clean_detector_evidence_distillation": (
+                args.evidence_distillation_weight
+            ),
+            "evidence_distillation_foreground_topk": (
+                args.evidence_distillation_topk
+            ),
+            "evidence_distillation_background_topk": (
+                args.evidence_distillation_background_topk
+            ),
+            "evidence_distillation_box_weight": (
+                args.evidence_distillation_box_weight
+            ),
+            "parameter_anchor": args.parameter_anchor_weight,
             "detector_cqmix_probability": args.detector_cqmix_probability,
             "detector_clean_hinge_weight": args.detector_clean_hinge_weight,
-            "detector_feature_layers": ["model.2", "model.4"],
-            "detector_feature_layer_weights": [0.5, 1.0],
+            "detector_feature_layers": list(args.tdp_layer_names),
+            "detector_feature_layer_weights": [
+                0.5 + 0.5 * index for index, _ in enumerate(args.tdp_layer_names)
+            ],
+            "detector_feature_defect_box_weight": args.tdp_defect_mask_weight,
             "dataset_gradient_surgery": bool(args.dataset_gradient_surgery),
             "dataset_gradient_merge": (
                 "equal-domain symmetric PCGrad"
@@ -2028,7 +2576,21 @@ def main() -> None:
                     prompt_teacher_mask=prompt_teacher_mask,
                 )
                 base = common_loss(restored, target)
-                tdp = grouped_tdp(tdp_losses, restored, target, tags_batch)
+                defect_mask = detector_box_mask(
+                    detector_bboxes,
+                    detector_valid,
+                    restored.shape[-2],
+                    restored.shape[-1],
+                )
+                tdp = base.new_zeros(())
+                if args.tdp_weight > 0.0:
+                    tdp = grouped_tdp(
+                        tdp_losses,
+                        restored,
+                        target,
+                        tags_batch,
+                        defect_mask=defect_mask,
+                    )
                 detector_supervised = base.new_zeros(())
                 if args.detector_supervised_weight > 0.0:
                     detector_supervised = grouped_detector_supervised(
@@ -2040,6 +2602,26 @@ def main() -> None:
                         detector_valid,
                         tags_batch,
                     )
+                evidence_distillation = base.new_zeros(())
+                if args.evidence_distillation_weight > 0.0:
+                    evidence_distillation = grouped_evidence_distillation(
+                        evidence_distillation_losses,
+                        restored,
+                        target,
+                        tags_batch,
+                    )
+                parameter_anchor_loss = base.new_zeros(())
+                if parameter_anchor:
+                    anchor_total = base.new_zeros(())
+                    anchor_count = 0
+                    for name, parameter in trainable_named:
+                        anchor_total = anchor_total + F.mse_loss(
+                            parameter,
+                            parameter_anchor[name],
+                            reduction="sum",
+                        )
+                        anchor_count += parameter.numel()
+                    parameter_anchor_loss = anchor_total / max(anchor_count, 1)
                 state = base.new_zeros(())
                 physical = base.new_zeros(())
                 state_logs: dict[str, Any] = {}
@@ -2054,15 +2636,19 @@ def main() -> None:
                         sensor_physical_available,
                     )
                     physical = state_logs.pop("physical_tensor")
-                # Manuscript Eq. (8): the detector and state terms enter the
+                # Manuscript Eq. (objective): detector, state, and fidelity terms enter the
                 # same backward pass; validation, never test data, selects the
                 # checkpoint and the later compound compatibility coefficient.
                 total = (
-                    base
+                    args.base_weight * base
                     + warmup * args.tdp_weight * tdp
                     + warmup
                     * args.detector_supervised_weight
                     * detector_supervised
+                    + warmup
+                    * args.evidence_distillation_weight
+                    * evidence_distillation
+                    + args.parameter_anchor_weight * parameter_anchor_loss
                     + args.state_weight * state
                     + args.physical_weight * physical
                 )
@@ -2092,18 +2678,31 @@ def main() -> None:
             elif not args.dataset_gradient_surgery and micro_steps % accumulation == 0:
                 scaler.unscale_(optimizer)
                 torch.nn.utils.clip_grad_norm_(restorer.parameters(), 1.0)
+                previous_scale = scaler.get_scale()
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
-                scheduler.step()
-                optimizer_steps += 1
-                global_step += 1
+                # GradScaler skips optimizer.step() after an overflow. Advance
+                # the scheduler and audited optimizer-step counter only when a
+                # parameter update actually occurred.
+                if scaler.get_scale() >= previous_scale:
+                    scheduler.step()
+                    optimizer_steps += 1
+                    global_step += 1
+                else:
+                    epoch_sums["amp_skipped_updates"] += 1.0
 
             epoch_sums["loss"] += float(total.detach().cpu())
             epoch_sums["base"] += float(base.detach().cpu())
             epoch_sums["tdp"] += float(tdp.detach().cpu())
             epoch_sums["detector_supervised"] += float(
                 detector_supervised.detach().cpu()
+            )
+            epoch_sums["evidence_distillation"] += float(
+                evidence_distillation.detach().cpu()
+            )
+            epoch_sums["parameter_anchor"] += float(
+                parameter_anchor_loss.detach().cpu()
             )
             epoch_sums["state"] += float(state.detach().cpu())
             epoch_sums["physical"] += float(physical.detach().cpu())
@@ -2130,6 +2729,10 @@ def main() -> None:
             "detector_supervised": (
                 epoch_sums["detector_supervised"] / count
             ),
+            "evidence_distillation": (
+                epoch_sums["evidence_distillation"] / count
+            ),
+            "parameter_anchor": epoch_sums["parameter_anchor"] / count,
             "state": epoch_sums["state"] / count,
             "physical": epoch_sums["physical"] / count,
             "metadata_mismatch_fraction": (
@@ -2149,6 +2752,7 @@ def main() -> None:
                 epoch_sums["pcgrad_cosine"]
                 / max(epoch_sums["pcgrad_updates"], 1.0)
             ),
+            "amp_skipped_updates": epoch_sums["amp_skipped_updates"],
             "lr": optimizer.param_groups[0]["lr"],
             "new_module_lr": (
                 optimizer.param_groups[1]["lr"]

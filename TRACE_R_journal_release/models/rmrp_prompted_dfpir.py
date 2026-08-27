@@ -1,4 +1,3 @@
-# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 """Sensor-conditioned DFPIR backbone used by the final RMR-P model.
 
 The image backbone is deliberately shared with the strongest matched baseline.

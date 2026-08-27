@@ -1,0 +1,61 @@
+[
+  {
+    "dataset": "ivcnz",
+    "scenario": "defocus",
+    "selected_stem": "img-1097",
+    "display_confidence": 0.25,
+    "matching_iou": 0.5,
+    "detector": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\runs\\detect\\runs\\yolo11s_sequence_disjoint_v1_20260716\\pothole_clean_80ep\\weights\\best.pt",
+    "selection": {
+      "ground_truth": 1,
+      "trace_true_positive": 1,
+      "trace_false_positive": 0,
+      "trace_false_negative": 0,
+      "strongest_deployable_true_positive": 0,
+      "mean_deployable_true_positive": 0.0
+    },
+    "selection_rule": [
+      "maximize TRACE-R TP minus strongest deployable comparator TP",
+      "then maximize TRACE-R TP minus mean comparator TP",
+      "then TRACE-R TP, fewer TRACE-R FP, and GT count"
+    ],
+    "figure": "paper_ieee_tits_trace_r\\figures\\fig_trace_ivcnz_qualitative.pdf"
+  },
+  {
+    "dataset": "pcm",
+    "scenario": "mixed",
+    "selected_stem": "vlcsnap-00080",
+    "display_confidence": 0.25,
+    "matching_iou": 0.5,
+    "detector": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\runs\\detect\\runs\\yolo11s_sequence_disjoint_v1_20260716\\pcm_clean_80ep\\weights\\best.pt",
+    "selection": {
+      "ground_truth": 2,
+      "trace_true_positive": 2,
+      "trace_false_positive": 0,
+      "trace_false_negative": 0,
+      "strongest_deployable_true_positive": 1,
+      "mean_deployable_true_positive": 0.5
+    },
+    "selection_rule": [
+      "maximize TRACE-R TP minus strongest deployable comparator TP",
+      "then maximize TRACE-R TP minus mean comparator TP",
+      "then TRACE-R TP, fewer TRACE-R FP, and GT count"
+    ],
+    "figure": "paper_ieee_tits_trace_r\\figures\\fig_trace_pcm_qualitative.pdf"
+  },
+  {
+    "dataset": "crid",
+    "selected_stem": "Cam1_2026-06-09_14-59-01_capt1795_1796",
+    "display_confidence": 0.1,
+    "matching_iou": 0.1,
+    "selection": {
+      "ground_truth": 7,
+      "trace_true_positive_iou10": 3,
+      "trace_false_positive": 4,
+      "trace_false_negative_iou10": 4,
+      "strongest_baseline_true_positive_iou10": 3,
+      "mean_baseline_true_positive_iou10": 2.2
+    },
+    "figure": "paper_ieee_tits_trace_r\\figures\\fig_trace_crid_qualitative.pdf"
+  }
+]

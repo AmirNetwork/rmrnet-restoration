@@ -1,56 +1,62 @@
 #!/usr/bin/env python3
-"""Build IEEE-journal tables and vector figures for TRACE-R.
+"""Build final IEEE-journal tables and vector figures for TRACE-R.
 
-All controlled-study values are read from the frozen validation-only ledger.
-The script performs no training, model selection, or metric optimization.
-Photographic panels are embedded in PDF containers; headings, annotations,
-legends, and borders are vector graphics using a Times-compatible font.
+Every reported value is read from one of three frozen provenance bundles:
+
+* v65: one-time controlled IVCNZ/PCM confirmatory test;
+* v66: validation-only metadata interventions;
+* v67: native-resolution CRID field evaluation.
+
+This script performs no training, checkpoint selection, detector fusion, or
+metric optimization. It emits only paper assets and an asset manifest.
+
+Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 """
 
 from __future__ import annotations
 
-# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
-
+import argparse
 import csv
+import hashlib
 import json
-import sys
+from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import FancyArrowPatch, Rectangle
-from PIL import Image
+from matplotlib.patches import FancyArrowPatch
 
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 PAPER = ROOT / "paper_ieee_tits_trace_r"
-TABLES = PAPER / "tables"
-FIGURES = PAPER / "figures"
-LEDGER_PATH = (
-    ROOT
-    / "experiments"
-    / "final_rmrp_v50_validation_ledger_20260824"
-    / "provenance_ledger.json"
-)
+CONTROLLED = Path(r"E:\TRACE_R_experiments\trace_locked_confirmatory_v65_20260828")
+CONTROLS = Path(r"E:\TRACE_R_experiments\trace_metadata_controls_v66_20260828")
+CRID = Path(r"E:\TRACE_R_experiments\trace_crid46_direct_v67_20260828")
 
-METHODS = ("nafnet", "nafnet_meta", "instructir", "dfpir", "demoe", "trace_r")
+METHODS = (
+    "raw",
+    "nafnet",
+    "nafnet_meta",
+    "instructir",
+    "dfpir",
+    "demoe_auto",
+    "trace_r",
+    "demoe_oracle",
+)
+DEPLOYABLE = tuple(method for method in METHODS if method != "demoe_oracle")
 DISPLAY = {
     "raw": "Degraded input",
     "nafnet": "NAFNet",
     "nafnet_meta": "FiLM-NAFNet",
-    "instructir": "InstructIR",
+    "instructir": "InstructIR*",
     "dfpir": "DFPIR",
-    "demoe": "DeMoE",
-    "rmrp": "TRACE-R",
+    "demoe_auto": "DeMoE-auto",
     "trace_r": "TRACE-R",
+    "demoe_oracle": "DeMoE-oracle*",
 }
-CRID_POLICY = ROOT / "experiments" / "crid46_tilefix_guarded_policy_20260812"
 CAUSES = ("motion", "defocus", "lowlight", "mixed")
-CAUSE_LABELS = ("Motion", "Defocus", "Low light", "Mixed")
 
 
 def configure_style() -> None:
@@ -61,14 +67,24 @@ def configure_style() -> None:
             "font.size": 7.0,
             "axes.titlesize": 7.5,
             "axes.labelsize": 7.0,
-            "xtick.labelsize": 6.4,
-            "ytick.labelsize": 6.4,
-            "legend.fontsize": 6.4,
+            "xtick.labelsize": 6.2,
+            "ytick.labelsize": 6.2,
+            "legend.fontsize": 6.2,
             "pdf.fonttype": 42,
             "ps.fonttype": 42,
             "axes.linewidth": 0.65,
+            "lines.linewidth": 1.0,
         }
     )
+
+
+def read_csv(path: Path) -> list[dict[str, str]]:
+    with path.open(newline="", encoding="utf-8") as handle:
+        return list(csv.DictReader(handle))
+
+
+def index(rows: Iterable[dict[str, str]], key: str) -> dict[str, dict[str, str]]:
+    return {row[key]: row for row in rows}
 
 
 def write(path: Path, text: str) -> None:
@@ -76,27 +92,15 @@ def write(path: Path, text: str) -> None:
     path.write_text(text.rstrip() + "\n", encoding="utf-8")
 
 
-def indexed_csv(path: Path) -> dict[str, dict[str, str]]:
-    with path.open(newline="", encoding="utf-8") as handle:
-        return {row["method"]: row for row in csv.DictReader(handle)}
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
-def record(ledger: dict[str, Any], method: str) -> dict[str, Any]:
-    if method == "trace_r":
-        return ledger["rmrp"]
-    return ledger["matched_baselines"][method]
-
-
-def metric(ledger: dict[str, Any], method: str, dataset: str, cause: str) -> float:
-    return float(record(ledger, method)["conditions"][f"{dataset}_{cause}"]["map50"])
-
-
-def bold(value: float, peers: list[float]) -> str:
-    rendered = f"{value:.3f}"
-    return rf"\textbf{{{rendered}}}" if value >= max(peers) - 1e-12 else rendered
-
-
-def table(
+def latex_table(
     caption: str,
     label: str,
     columns: str,
@@ -112,577 +116,554 @@ def table(
         r"\centering",
         rf"\caption{{{caption}}}",
         rf"\label{{{label}}}",
-        r"\footnotesize",
-        r"\setlength{\tabcolsep}{3.7pt}",
+        r"\scriptsize",
         rf"\begin{{tabular}}{{{columns}}}",
         r"\toprule",
-        header + r" \\",
+        header + " \\\\",
         r"\midrule",
-        *rows,
+        *[row + " \\\\" for row in rows],
         r"\bottomrule",
         r"\end{tabular}",
     ]
     if note:
-        lines.extend([r"\vspace{1mm}", rf"\parbox{{0.96\linewidth}}{{\scriptsize {note}}}"])
+        note_width = r"\textwidth" if wide else r"\columnwidth"
+        lines.extend(
+            [
+                r"\vspace{1mm}",
+                rf"\parbox{{0.97{note_width}}}{{\scriptsize {note}}}",
+            ]
+        )
     lines.append(rf"\end{{{environment}}}")
     return "\n".join(lines)
 
 
-def build_tables(ledger: dict[str, Any]) -> None:
+def bold_best(value: float, candidates: Iterable[float]) -> str:
+    rendered = f"{value:.3f}"
+    if value >= max(candidates) - 1e-12:
+        return rf"\textbf{{{rendered}}}"
+    return rendered
+
+
+def build_controlled_table(aggregate: dict[str, dict[str, str]]) -> str:
+    fields = (
+        "ivcnz_mean_map50",
+        "ivcnz_mean_map50_95",
+        "pcm_mean_map50",
+        "pcm_mean_map50_95",
+        "joint_mean_map50",
+        "joint_mean_map50_95",
+    )
+    deployable_best = {
+        field: [float(aggregate[method][field]) for method in DEPLOYABLE]
+        for field in fields
+    }
     rows: list[str] = []
     for method in METHODS:
-        item = record(ledger, method)
-        ivcnz = float(item["mean_map50"]["ivcnz"])
-        pcm = float(item["mean_map50"]["pcm"])
-        joint = float(item["joint_mean_map50"])
-        rows.append(
-            f"{DISPLAY[method]} & "
-            f"{bold(ivcnz, [float(record(ledger, m)['mean_map50']['ivcnz']) for m in METHODS])} & "
-            f"{bold(pcm, [float(record(ledger, m)['mean_map50']['pcm']) for m in METHODS])} & "
-            f"{bold(joint, [float(record(ledger, m)['joint_mean_map50']) for m in METHODS])} "
-            + r"\\"
-        )
-    write(
-        TABLES / "table_controlled_summary.tex",
-        table(
-            "Matched controlled-study detection on disjoint validation partitions.",
-            "tab:controlled_summary",
-            "lrrr",
-            r"Method & IVCNZ mAP50 & PCM mAP50 & Joint mean",
-            rows,
-            wide=False,
-        ),
-    )
-
-    condition_rows = []
-    for method in METHODS:
-        values = [metric(ledger, method, dataset, cause) for dataset in ("ivcnz", "pcm") for cause in CAUSES]
-        rendered = []
-        for dataset in ("ivcnz", "pcm"):
-            for cause in CAUSES:
-                value = metric(ledger, method, dataset, cause)
-                rendered.append(bold(value, [metric(ledger, peer, dataset, cause) for peer in METHODS]))
-        condition_rows.append(f"{DISPLAY[method]} & " + " & ".join(rendered) + r" \\")
-    write(
-        TABLES / "table_condition_results.tex",
-        table(
-            "Condition-level mAP50 on IVCNZ and PCM.",
-            "tab:condition_results",
-            "lrrrrrrrr",
-            "Method & \\multicolumn{4}{c}{IVCNZ} & \\multicolumn{4}{c}{PCM} \\\\\n"
-            "\\cmidrule(lr){2-5}\\cmidrule(lr){6-9}\n"
-            "& Mot. & Def. & Low & Mix. & Mot. & Def. & Low & Mix.",
-            condition_rows,
-        ),
-    )
-
-    controls = ledger["metadata_controls"]
-    control_rows = []
-    for key, name in (
-        ("correct", "Aligned packet"),
-        ("unavailable", "All sensor groups unavailable"),
-        ("cross_condition_shuffled", "Wrong-condition packet"),
-    ):
-        item = controls[key]
-        control_rows.append(
-            f"{name} & {item['mean_map50']['ivcnz']:.3f} & "
-            f"{item['mean_map50']['pcm']:.3f} & {item['joint_mean_map50']:.3f} "
-            + r"\\"
-        )
-    write(
-        TABLES / "table_metadata_controls.tex",
-        table(
-            "TRACE-R packet interventions.",
-            "tab:metadata_controls",
-            "lrrr",
-            r"Packet supplied at inference & IVCNZ & PCM & Joint",
-            control_rows,
-            wide=False,
-        ),
-    )
-
-    fidelity_rows = []
-    for method in ("raw", "instructir", "dfpir", "demoe", "rmrp"):
-        item = ledger["fidelity"][method]
-        fidelity_rows.append(
-            f"{DISPLAY[method]} & {item['ivcnz']['mean']['psnr']:.2f} & "
-            f"{item['ivcnz']['mean']['ssim']:.3f} & {item['pcm']['mean']['psnr']:.2f} & "
-            f"{item['pcm']['mean']['ssim']:.3f} " + r"\\"
-        )
-    write(
-        TABLES / "table_fidelity.tex",
-        table(
-            "Paired fidelity over all four controlled conditions.",
-            "tab:fidelity",
-            "lrrrr",
-            "Method & \\multicolumn{2}{c}{IVCNZ} & \\multicolumn{2}{c}{PCM} \\\\\n"
-            "\\cmidrule(lr){2-3}\\cmidrule(lr){4-5}\n"
-            "& PSNR & SSIM & PSNR & SSIM",
-            fidelity_rows,
-        ),
-    )
-
-    kitti_rows = [
-        r"Degraded input & none & 26.06 & 0.845 & 0.00 \\",
-        r"NAFNet & none & 26.03 & 0.848 & -0.03 \\",
-        r"FiLM-NAFNet & raw OXTS & 25.96 & 0.846 & -0.10 \\",
-        r"TRACE-R & unavailable packet & 26.82 & 0.865 & +0.76 \\",
-        r"TRACE-R & raw OXTS & \textbf{26.86} & \textbf{0.865} & \textbf{+0.79} \\",
-    ]
-    write(
-        TABLES / "table_kitti.tex",
-        table(
-            "Drive-disjoint KITTI transfer with measured OXTS telemetry.",
-            "tab:kitti",
-            "llrrr",
-            r"Method & Capture information & PSNR & SSIM & $\Delta$PSNR",
-            kitti_rows,
-            wide=False,
-        ),
-    )
-
-    crid_later = indexed_csv(CRID_POLICY / "supportive_summary.csv")
-    crid_methods = (
-        ("raw", "Raw image"),
-        ("nafnet", "NAFNet"),
-        ("dfpir", "DFPIR"),
-        ("demoe_auto", "DeMoE"),
-        ("instructir", "InstructIR"),
-        ("rmr_guarded_dual_view", "TRACE-R"),
-    )
-    columns: dict[str, list[float]] = {key: [] for key in ("s10", "s50", "sm")}
-    crid_values: dict[str, dict[str, float]] = {}
-    for method, _ in crid_methods:
-        s10 = float(crid_later[method]["ap10_primary"])
-        s50 = float(crid_later[method]["ap50_primary"])
-        values = {"s10": s10, "s50": s50, "sm": (s10 + s50) / 2}
-        crid_values[method] = values
-        for key, value in values.items():
-            columns[key].append(value)
-    crid_rows = []
-    for method, name in crid_methods:
-        values = crid_values[method]
-        rendered = [bold(values[key], columns[key]) for key in ("s10", "s50", "sm")]
-        crid_rows.append(f"{name} & " + " & ".join(rendered) + r" \\")
-    write(
-        TABLES / "table_crid.tex",
-        table(
-            "CRID native-image detection on the 13-frame temporal evaluation block.",
-            "tab:crid",
-            "lrrr",
-            "Input & AP@.10 & AP@.50 & Mean",
-            crid_rows,
-        ),
-    )
-
-    training_rows = [
-        r"NAFNet & 70 & 4,096 & joint validation mAP50 \\",
-        r"FiLM-NAFNet & 70 & 4,096 & joint validation mAP50 \\",
-        r"InstructIR & 70 & 4,096 & joint validation mAP50 \\",
-        r"DFPIR & 70 & 4,096 & joint validation mAP50 \\",
-        r"DeMoE & 70 & 4,096 & joint validation mAP50 \\",
-        r"TRACE-R router & matched experts & 0 & joint validation mAP50 \\",
-    ]
-    write(
-        TABLES / "table_training_audit.tex",
-        table(
-            "Matched target-domain adaptation and selection budget.",
-            "tab:training_audit",
-            "lrrl",
-            r"Method & Epochs & Optimizer steps & Selection endpoint",
-            training_rows,
-        ),
-    )
-
-    checkpoint_rows = []
-    for method in ("demoe", "dfpir", "instructir"):
-        item = ledger["matched_baselines"][method]
-        checkpoint_rows.append(
-            f"{DISPLAY[method]} & 70 & \\texttt{{{item['checkpoint_sha256'][:16]}}} " + r"\\"
-        )
-    write(
-        TABLES / "table_checkpoints.tex",
-        table(
-            "TRACE-R expert checkpoints.",
-            "tab:checkpoints",
-            "lrl",
-            r"Expert & Adaptation epochs & SHA-256 prefix",
-            checkpoint_rows,
-            wide=False,
-        ),
-    )
-
-
-def add_border(ax: Any) -> None:
-    ax.add_patch(
-        Rectangle(
-            (0, 0),
-            1,
-            1,
-            transform=ax.transAxes,
-            fill=False,
-            edgecolor="black",
-            linewidth=0.75,
-            clip_on=False,
-            zorder=100,
-        )
-    )
-
-
-def node(ax: Any, xy: tuple[float, float], wh: tuple[float, float], text: str, face: str) -> None:
-    x, y = xy
-    width, height = wh
-    ax.add_patch(Rectangle((x, y), width, height, facecolor=face, edgecolor="black", linewidth=0.65))
-    ax.text(x + width / 2, y + height / 2, text, ha="center", va="center", fontsize=6.8)
-
-
-def connector(ax: Any, start: tuple[float, float], end: tuple[float, float]) -> None:
-    ax.add_patch(
-        FancyArrowPatch(start, end, arrowstyle="-|>", mutation_scale=7, linewidth=0.65, color="black")
-    )
-
-
-def build_architecture() -> None:
-    fig, ax = plt.subplots(figsize=(7.16, 3.35))
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    ax.axis("off")
-    add_border(ax)
-    ax.text(0.018, 0.965, "Deployed inference: one automatic output", fontweight="bold", va="top", fontsize=8)
-
-    node(ax, (0.020, 0.61), (0.105, 0.14), "Road image\n$ I_d $", "#eef6f7")
-    node(ax, (0.020, 0.29), (0.155, 0.20), "Observable packet $m$\n\nCamera settings\n11 IMU samples\nVehicle state", "#fff2e8")
-    node(ax, (0.215, 0.29), (0.155, 0.22), "Physical state $h(m)$\n\nMotion and vibration\nFocus and illumination\nReliability and masks", "#fff2e8")
-    node(ax, (0.410, 0.31), (0.125, 0.18), "Cause router\n\nexpert weights\n$a_1,\\ldots,a_K$", "#eef0f8")
-    node(ax, (0.575, 0.59), (0.115, 0.105), "DFPIR", "#edf6ef")
-    node(ax, (0.575, 0.455), (0.115, 0.105), "InstructIR", "#edf6ef")
-    node(ax, (0.575, 0.320), (0.115, 0.105), "DeMoE", "#edf6ef")
-    node(ax, (0.730, 0.49), (0.115, 0.17), "Convex restored\ncandidate\n$ I_r=\\sum_j a_jE_j(I_d)$", "#eef0f8")
-    node(ax, (0.730, 0.245), (0.115, 0.145), "Label-free\nevidence guard\n$q(P_d),q(P_r)$", "#f8eedf")
-    node(ax, (0.880, 0.33), (0.100, 0.22), "Final image $I_o$\nand detections\n\nnative or\nrestored evidence", "#eaf4ee")
-
-    # Image evidence reaches every expert; telemetry controls only the route.
-    connector(ax, (0.125, 0.68), (0.555, 0.68))
-    ax.plot([0.555, 0.555], [0.37, 0.68], color="black", linewidth=0.65)
-    for y in (0.642, 0.507, 0.372):
-        connector(ax, (0.555, y), (0.575, y))
-    connector(ax, (0.175, 0.39), (0.215, 0.39))
-    connector(ax, (0.370, 0.40), (0.410, 0.40))
-    for y in (0.642, 0.507, 0.372):
-        connector(ax, (0.535, 0.40), (0.575, y))
-    for y in (0.642, 0.507, 0.372):
-        connector(ax, (0.690, y), (0.730, 0.575))
-    connector(ax, (0.788, 0.49), (0.788, 0.39))
-    connector(ax, (0.845, 0.318), (0.880, 0.42))
-    # The native image is evaluated inside the automatic guard; the operator
-    # receives one output and never chooses a manual restoration switch.
-    ax.plot([0.125, 0.125], [0.585, 0.205], color="black", linewidth=0.60)
-    ax.plot([0.125, 0.700], [0.205, 0.205], color="black", linewidth=0.60)
-    connector(ax, (0.700, 0.205), (0.730, 0.315))
-
-    ax.plot([0.02, 0.98], [0.16, 0.16], color="black", linewidth=0.5)
-    ax.text(0.025, 0.085, "Matched adaptation:", fontweight="bold", va="center")
-    ax.text(
-        0.18,
-        0.085,
-        r"$\mathcal{L}=\mathcal{L}_{char}+\lambda_g\mathcal{L}_{grad}+\lambda_T\mathcal{L}_{TDP}+\lambda_D\mathcal{L}_{det}$",
-        va="center",
-    )
-    ax.text(0.72, 0.085, "Frozen detector; equal budget", va="center")
-    fig.subplots_adjust(left=0.01, right=0.99, top=0.98, bottom=0.02)
-    fig.savefig(FIGURES / "fig_trace_architecture.pdf")
-    plt.close(fig)
-
-
-def build_controlled_results(ledger: dict[str, Any]) -> None:
-    labels = [DISPLAY[method] for method in METHODS]
-    ivcnz = [float(record(ledger, method)["mean_map50"]["ivcnz"]) for method in METHODS]
-    pcm = [float(record(ledger, method)["mean_map50"]["pcm"]) for method in METHODS]
-    controls = ledger["metadata_controls"]
-
-    fig, axes = plt.subplots(1, 2, figsize=(7.16, 2.85), gridspec_kw={"width_ratios": [1.45, 1.0]})
-    x = np.arange(len(METHODS))
-    width = 0.36
-    axes[0].bar(x - width / 2, ivcnz, width, label="IVCNZ", color="#31688e", edgecolor="black", linewidth=0.35)
-    axes[0].bar(x + width / 2, pcm, width, label="PCM", color="#d9824b", edgecolor="black", linewidth=0.35)
-    axes[0].set_xticks(x, labels, rotation=23, ha="right")
-    axes[0].set_ylabel("Mean mAP50")
-    axes[0].set_ylim(0, 0.60)
-    axes[0].legend(frameon=False, ncol=2, loc="upper left")
-    axes[0].set_title("(a) Matched restoration comparison", loc="left", fontweight="bold")
-
-    keys = ("correct", "unavailable", "cross_condition_shuffled")
-    names = ("Aligned", "Unavailable", "Wrong\ncondition")
-    values = [float(controls[key]["joint_mean_map50"]) for key in keys]
-    bars = axes[1].bar(names, values, color=("#278b74", "#9ba7af", "#bb6258"), edgecolor="black", linewidth=0.4)
-    axes[1].set_ylim(0, 0.45)
-    axes[1].set_ylabel("Joint mean mAP50")
-    axes[1].set_title("(b) Packet-content intervention", loc="left", fontweight="bold")
-    for bar, value in zip(bars, values):
-        axes[1].text(bar.get_x() + bar.get_width() / 2, value + 0.007, f"{value:.3f}", ha="center", va="bottom")
-
-    for ax in axes:
-        ax.grid(axis="y", color="#d7dde1", linewidth=0.45)
-        ax.set_axisbelow(True)
-        add_border(ax)
-    fig.subplots_adjust(left=0.075, right=0.99, top=0.88, bottom=0.27, wspace=0.34)
-    fig.savefig(FIGURES / "fig_trace_controlled_results.pdf")
-    plt.close(fig)
-
-
-def build_controlled_qualitative() -> None:
-    # Render the frozen examples with the complete matched comparator set.
-    # Selection was performed once by build_rmrp_v50_validation_qualitative;
-    # this renderer only adds the two NAFNet controls and changes the layout.
-    import tools.build_tracer_all_baseline_qualitative as qualitative
-
-    qualitative.main()
-
-
-def build_crid_results() -> None:
-    methods = ("Raw", "NAFNet", "DFPIR", "DeMoE", "InstructIR", "TRACE-R")
-    keys = ("raw", "nafnet", "dfpir", "demoe_auto", "instructir", "rmr_guarded_dual_view")
-    supportive = indexed_csv(CRID_POLICY / "supportive_summary.csv")
-    ap10 = [float(supportive[key]["ap10_primary"]) for key in keys]
-    ap50 = [float(supportive[key]["ap50_primary"]) for key in keys]
-    x = np.arange(len(methods))
-    width = 0.36
-    fig, ax = plt.subplots(figsize=(3.5, 2.25))
-    colors_a = ["#9ca8af"] * 5 + ["#278b74"]
-    colors_b = ["#d2d8dc"] * 5 + ["#67b8a6"]
-    ax.bar(x - width / 2, ap10, width, color=colors_a, edgecolor="black", linewidth=0.4, label="AP@.10")
-    ax.bar(x + width / 2, ap50, width, color=colors_b, edgecolor="black", linewidth=0.4, label="AP@.50")
-    ax.set_xticks(x, methods, rotation=25, ha="right")
-    ax.set_ylim(0.38, 0.60)
-    ax.set_ylabel("Average precision")
-    ax.legend(frameon=False, ncol=2, loc="upper left")
-    ax.grid(axis="y", color="#d7dde1", linewidth=0.45)
-    ax.set_axisbelow(True)
-    add_border(ax)
-    fig.subplots_adjust(left=0.15, right=0.98, top=0.96, bottom=0.29)
-    fig.savefig(FIGURES / "fig_trace_crid_ap.pdf")
-    plt.close(fig)
-
-
-def wrap_raster(source: Path, destination: Path, *, figsize: tuple[float, float]) -> None:
-    image = Image.open(source).convert("RGB")
-    fig, ax = plt.subplots(figsize=figsize)
-    ax.imshow(image)
-    ax.axis("off")
-    add_border(ax)
-    fig.subplots_adjust(left=0.008, right=0.992, top=0.992, bottom=0.008)
-    fig.savefig(destination, dpi=300)
-    plt.close(fig)
-
-
-def build_wrapped_field_assets() -> None:
-    source = ROOT / "paper_automation_in_construction_rmrnet" / "figures"
-    wrap_raster(source / "fig_sony_collection_system.png", FIGURES / "fig_trace_crid_collection.pdf", figsize=(7.16, 2.45))
-
-
-def build_crid_overlays() -> None:
-    """Rebuild field overlays with the journal name and frozen field policy."""
-
-    import tools.build_crid_direct_sbg_overlays as crid
-
-    crid.PAPER_FIGURE = FIGURES / "fig_trace_crid_policy_atlas.png"
-    crid.SUPPLEMENT_FIGURE = FIGURES / "fig_trace_crid_all13.png"
-    crid.METHODS = tuple(
-        (key, "TRACE-R" if key == "rmr_guarded_dual_view" else name, folder)
-        for key, name, folder in crid.METHODS
-    )
-    crid.main()
-    wrap_raster(
-        crid.PAPER_FIGURE,
-        FIGURES / "fig_trace_crid_policy_atlas.pdf",
-        figsize=(7.16, 4.0),
-    )
-    wrap_raster(
-        crid.SUPPLEMENT_FIGURE,
-        FIGURES / "fig_trace_crid_all13.pdf",
-        figsize=(7.16, 8.0),
-    )
-
-
-def build_crid_validation_example() -> None:
-    """Show one CRID validation frame with vector labels and box overlays."""
-
-    import tools.build_crid_direct_sbg_overlays as crid
-    from tools.run_crid46_sequence_disjoint_comparison import (
-        load_compact_predictions,
-        subset_gt,
-    )
-
-    selected = ["Cam1_2026-06-09_14-56-15_capt0465_466.jpg"]
-    ground_truth = subset_gt(selected, crid.LABEL_ROOT)
-    operating_rows = json.loads(
-        (crid.OPERATING / "frozen_operating_points_before_test.json").read_text(
-            encoding="utf-8"
-        )
-    )["operating_points"]
-    thresholds = {row["method"]: float(row["threshold"]) for row in operating_rows}
-    guard = json.loads(
-        (crid.GUARDED / "frozen_policy_before_supportive_test.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    thresholds["rmr_guarded_dual_view"] = float(
-        guard["detector_operating_point"]["threshold"]
-    )
-    methods = tuple(
-        (key, "TRACE-R" if key == "rmr_guarded_dual_view" else name, folder)
-        for key, name, folder in crid.METHODS
-    )
-    prediction_maps = {}
-    for method, _, _ in methods:
-        path = (
-            crid.GUARDED / "val_predictions/rmr_guarded_dual_view.csv"
-            if method == "rmr_guarded_dual_view"
-            else crid.EXPERIMENT / "val_predictions" / f"{method}.csv"
-        )
-        prediction_maps[method] = load_compact_predictions(path)
-    decision_rows = json.loads(
-        (crid.GUARDED / "val_predictions/rmr_guarded_dual_view.json").read_text(
-            encoding="utf-8"
-        )
-    )["decisions"]
-    decisions = {row["image"]: row for row in decision_rows}
-    native_images = crid.by_stem(crid.NATIVE)
-    restored_images = crid.by_stem(crid.EXPERIMENT / "current_rmr_restored/val")
-    image_roots = {}
-    for method, _, folder in methods:
-        if method != "rmr_guarded_dual_view":
-            image_roots[method] = crid.by_stem(folder)
+        values = [float(aggregate[method][field]) for field in fields]
+        if method == "demoe_oracle":
+            rendered = [f"{value:.3f}" for value in values]
+            name = rf"\emph{{{DISPLAY[method]}}}"
         else:
-            image_roots[method] = {
-                Path(name).stem: (
-                    native_images[Path(name).stem]
-                    if decisions[name]["policy_output"] == "native"
-                    else restored_images[Path(name).stem]
-                )
-                for name in selected
-            }
-    name = selected[0]
-    native = Image.open(image_roots["raw"][Path(name).stem]).convert("RGB")
-    crop = crid.crop_for(ground_truth[name], native.size, aspect=1.48)
-    left, top, _, _ = crop
+            rendered = [
+                bold_best(value, deployable_best[field])
+                for value, field in zip(values, fields, strict=True)
+            ]
+            name = DISPLAY[method]
+        rows.append(" & ".join([name, *rendered]))
+    return latex_table(
+        "Sealed controlled-test detection after validation-only model selection.",
+        "tab:controlled_summary",
+        "lrrrrrr",
+        (
+            r"Method & \multicolumn{2}{c}{IVCNZ} & \multicolumn{2}{c}{PCM} "
+            r"& \multicolumn{2}{c}{Joint} \\"
+            "\n"
+            r"\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}"
+            "\n"
+            r" & mAP50 & mAP50--95 & mAP50 & mAP50--95 & mAP50 & mAP50--95"
+        ),
+        rows,
+        note=(
+            "Bold marks the best deployable method. *InstructIR receives the controlled "
+            "condition instruction and DeMoE-oracle receives the benchmark condition label; "
+            "the latter is a non-deployable upper bound. Every row uses one restored image "
+            "and the same frozen detector, with no prediction fusion."
+        ),
+    )
 
-    panels: list[tuple[str, str | None]] = [("Ground truth", None)] + [
-        (display, method) for method, display, _ in methods
+
+def build_condition_table(condition_rows: list[dict[str, str]]) -> str:
+    values = {
+        (row["method"], row["name"]): float(row["map50"])
+        for row in condition_rows
+    }
+    condition_names = [
+        f"{dataset}_{cause}" for dataset in ("ivcnz", "pcm") for cause in CAUSES
     ]
-    fig = plt.figure(figsize=(7.16, 2.62))
-    grid = fig.add_gridspec(2, 8, hspace=0.16, wspace=0.08)
-    slots = [(0, 0), (0, 2), (0, 4), (0, 6), (1, 1), (1, 3), (1, 5)]
-
-    for (title, method), (row, column) in zip(panels, slots):
-        ax = fig.add_subplot(grid[row, column : column + 2])
-        source = native if method is None else Image.open(
-            image_roots[method][Path(name).stem]
-        ).convert("RGB")
-        ax.imshow(np.asarray(source.crop(crop)))
-        ax.set_title(title, fontweight="bold", pad=2.0)
-        ax.set_xticks([])
-        ax.set_yticks([])
-
-        # Yellow rectangles are manual annotations. Green rectangles are
-        # detector predictions retained at validation-selected thresholds.
-        for item in ground_truth[name]:
-            x1, y1, x2, y2 = item["box"]
-            ax.add_patch(
-                Rectangle(
-                    (x1 - left, y1 - top),
-                    x2 - x1,
-                    y2 - y1,
-                    fill=False,
-                    edgecolor="#f5be2d",
-                    linewidth=0.85,
-                )
+    best = {
+        name: [values[(method, name)] for method in DEPLOYABLE]
+        for name in condition_names
+    }
+    rows: list[str] = []
+    for method in METHODS:
+        rendered = []
+        for name in condition_names:
+            value = values[(method, name)]
+            rendered.append(
+                f"{value:.3f}"
+                if method == "demoe_oracle"
+                else bold_best(value, best[name])
             )
-        if method is not None:
-            for item in prediction_maps[method].get(name, []):
-                if float(item["conf"]) < thresholds[method]:
-                    continue
-                x1, y1, x2, y2 = item["box"]
-                ax.add_patch(
-                    Rectangle(
-                        (x1 - left, y1 - top),
-                        x2 - x1,
-                        y2 - y1,
-                        fill=False,
-                        edgecolor="#14b07d",
-                        linewidth=0.75,
-                    )
-                )
-        if method == "rmr_guarded_dual_view":
-            note = crid.decision_note(method, name, decisions)
-            ax.text(
-                0.02,
-                0.03,
-                note,
-                transform=ax.transAxes,
-                fontsize=5.2,
-                bbox={
-                    "facecolor": "white",
-                    "edgecolor": "black",
-                    "linewidth": 0.3,
-                    "pad": 1.5,
-                },
-            )
-        add_border(ax)
+        display = DISPLAY[method]
+        if method == "demoe_oracle":
+            display = rf"\emph{{{display}}}"
+        rows.append(" & ".join([display, *rendered]))
+    return latex_table(
+        "Controlled-test mAP50 by corruption family.",
+        "tab:condition_results",
+        "lrrrrrrrr",
+        (
+            r"Method & \multicolumn{4}{c}{IVCNZ} & \multicolumn{4}{c}{PCM} \\"
+            "\n"
+            r"\cmidrule(lr){2-5}\cmidrule(lr){6-9}"
+            "\n"
+            r" & Mot. & Def. & Low & Mix & Mot. & Def. & Low & Mix"
+        ),
+        rows,
+        note="Bold marks the best deployable method for each condition; the oracle row is excluded from bolding.",
+    )
 
-    fig.text(
-        0.5,
-        0.018,
-        "Yellow: manual annotation    Green: prediction at the validation-selected operating threshold",
+
+def build_fidelity_table(fidelity_rows: list[dict[str, str]]) -> str:
+    grouped: dict[tuple[str, str], list[dict[str, str]]] = defaultdict(list)
+    for row in fidelity_rows:
+        grouped[(row["method"], row["dataset"])].append(row)
+    means: dict[tuple[str, str], tuple[float, float]] = {}
+    for key, rows in grouped.items():
+        means[key] = (
+            float(np.mean([float(row["psnr"]) for row in rows])),
+            float(np.mean([float(row["ssim"]) for row in rows])),
+        )
+    best: dict[tuple[str, int], list[float]] = {}
+    for dataset in ("ivcnz", "pcm"):
+        for metric_index in (0, 1):
+            best[(dataset, metric_index)] = [
+                means[(method, dataset)][metric_index] for method in DEPLOYABLE
+            ]
+    rows: list[str] = []
+    for method in METHODS:
+        rendered: list[str] = []
+        for dataset in ("ivcnz", "pcm"):
+            for metric_index, value in enumerate(means[(method, dataset)]):
+                digits = 2 if metric_index == 0 else 3
+                text = f"{value:.{digits}f}"
+                if method != "demoe_oracle" and value >= max(best[(dataset, metric_index)]) - 1e-12:
+                    text = rf"\textbf{{{text}}}"
+                rendered.append(text)
+        name = DISPLAY[method]
+        if method == "demoe_oracle":
+            name = rf"\emph{{{name}}}"
+        rows.append(" & ".join([name, *rendered]))
+    return latex_table(
+        "Mean paired restoration fidelity across the four controlled corruptions.",
+        "tab:fidelity",
+        "lrrrr",
+        (
+            r"Method & \multicolumn{2}{c}{IVCNZ} & \multicolumn{2}{c}{PCM} \\"
+            "\n"
+            r"\cmidrule(lr){2-3}\cmidrule(lr){4-5}"
+            "\n"
+            r" & PSNR & SSIM & PSNR & SSIM"
+        ),
+        rows,
+        note=(
+            "Clean references are resized once to the stored restoration canvas with Lanczos "
+            "interpolation before full-reference scoring; detection images and labels are unchanged."
+        ),
+    )
+
+
+def build_control_table(control_rows: list[dict[str, str]]) -> str:
+    display = {
+        "aligned": "Aligned packet",
+        "unavailable": "All groups unavailable",
+        "wrong_condition": "Wrong-condition packet",
+    }
+    rows = []
+    for row in control_rows:
+        values = [
+            float(row["ivcnz_mean_map50"]),
+            float(row["pcm_mean_map50"]),
+            float(row["joint_mean_map50"]),
+        ]
+        rendered = [f"{value:.3f}" for value in values]
+        if row["control"] == "aligned":
+            rendered = [rf"\textbf{{{value}}}" for value in rendered]
+        rows.append(" & ".join([display[row["control"]], *rendered]))
+    return latex_table(
+        "Validation-only intervention on TRACE-R's capture packet.",
+        "tab:metadata_controls",
+        "lrrr",
+        r"Packet supplied at inference & IVCNZ mAP50 & PCM mAP50 & Joint mAP50",
+        rows,
+        wide=False,
+        note="Only the packet changes; images, model weights, and frozen detectors remain fixed.",
+    )
+
+
+def build_crid_table(crid_rows: list[dict[str, str]]) -> str:
+    order = ("raw", "nafnet", "instructir", "dfpir", "demoe_auto", "rmr_fine_eta0p5")
+    display = {
+        "raw": "Native image",
+        "nafnet": "NAFNet",
+        "instructir": "InstructIR",
+        "dfpir": "DFPIR",
+        "demoe_auto": "DeMoE-auto",
+        "rmr_fine_eta0p5": "TRACE-R",
+    }
+    indexed = index(crid_rows, "method")
+    best10 = max(float(indexed[method]["ap10_primary"]) for method in order)
+    best50 = max(float(indexed[method]["ap50_primary"]) for method in order)
+    bestmean = max(
+        0.5 * (float(indexed[method]["ap10_primary"]) + float(indexed[method]["ap50_primary"]))
+        for method in order
+    )
+    rows = []
+    for method in order:
+        row = indexed[method]
+        ap10 = float(row["ap10_primary"])
+        ap50 = float(row["ap50_primary"])
+        mean = 0.5 * (ap10 + ap50)
+        coverage = float(row["coverage"])
+        rendered = [
+            rf"\textbf{{{ap10:.3f}}}" if ap10 >= best10 - 1e-12 else f"{ap10:.3f}",
+            rf"\textbf{{{ap50:.3f}}}" if ap50 >= best50 - 1e-12 else f"{ap50:.3f}",
+            rf"\textbf{{{mean:.3f}}}" if mean >= bestmean - 1e-12 else f"{mean:.3f}",
+            f"{coverage:.3f}",
+        ]
+        rows.append(" & ".join([display[method], *rendered]))
+    return latex_table(
+        "Native-resolution CRID temporal field evaluation (13 frames, 49 annotated defects).",
+        "tab:crid",
+        "lrrrr",
+        r"Method & AP@.10 & AP@.50 & Mean AP & GT coverage",
+        rows,
+        wide=False,
+        note=(
+            "No synthetic corruption is added. TRACE-R uses validation-selected residual "
+            r"strength $\eta=0.5$ and one restored image. The same frozen detector and native "
+            "image coordinates are used for every method."
+        ),
+    )
+
+
+def build_training_table(ledger: dict[str, Any]) -> str:
+    rows = []
+    for method in ("nafnet", "nafnet_meta", "instructir", "dfpir", "demoe_auto", "trace_r"):
+        policy = ledger["policies"][method]
+        rows.append(
+            " & ".join(
+                [
+                    DISPLAY[method],
+                    "32",
+                    "4096",
+                    policy["checkpoint_sha256"][:12],
+                ]
+            )
+        )
+    return latex_table(
+        "Matched continuation budget and frozen checkpoint identity.",
+        "tab:training_audit",
+        "lrrl",
+        r"Method & Continuation epochs & Optimizer updates & SHA-256 prefix",
+        rows,
+        wide=False,
+        note=(
+            "All methods use 512 balanced crops per epoch, effective batch size four, and the "
+            "same frozen dataset-specific detector. Full hashes and commands are in the release."
+        ),
+    )
+
+
+def rounded_box(
+    axis: plt.Axes,
+    xy: tuple[float, float],
+    width: float,
+    height: float,
+    text: str,
+    *,
+    face: str,
+    edge: str = "#30343b",
+    fontsize: float = 7.0,
+    weight: str = "normal",
+) -> None:
+    patch = mpl.patches.FancyBboxPatch(
+        xy,
+        width,
+        height,
+        boxstyle="round,pad=0.012,rounding_size=0.015",
+        linewidth=0.8,
+        edgecolor=edge,
+        facecolor=face,
+    )
+    axis.add_patch(patch)
+    axis.text(
+        xy[0] + width / 2,
+        xy[1] + height / 2,
+        text,
         ha="center",
+        va="center",
+        fontsize=fontsize,
+        fontweight=weight,
+        linespacing=1.12,
+    )
+
+
+def arrow(axis: plt.Axes, start: tuple[float, float], end: tuple[float, float]) -> None:
+    axis.add_patch(
+        FancyArrowPatch(
+            start,
+            end,
+            arrowstyle="-|>",
+            mutation_scale=8,
+            linewidth=0.8,
+            color="#30343b",
+            shrinkA=2,
+            shrinkB=2,
+        )
+    )
+
+
+def build_architecture_figure(path: Path) -> None:
+    fig, axis = plt.subplots(figsize=(7.16, 3.35))
+    axis.set_xlim(0.0, 1.0)
+    axis.set_ylim(0.0, 1.0)
+    axis.axis("off")
+
+    blue = "#dcebf7"
+    green = "#e1f1e5"
+    amber = "#faedd2"
+    grey = "#eef0f2"
+    red = "#f7e1df"
+
+    rounded_box(axis, (0.02, 0.62), 0.13, 0.18, "Degraded image\n$I_d$", face=grey, weight="bold")
+    rounded_box(
+        axis,
+        (0.02, 0.24),
+        0.13,
+        0.24,
+        "Capture packet $m$\n33 gyro values\n33 accel values\n16 context fields",
+        face=blue,
         fontsize=6.2,
     )
-    fig.subplots_adjust(left=0.01, right=0.99, top=0.965, bottom=0.075)
-    fig.savefig(FIGURES / "fig_trace_crid_validation_example.pdf")
+
+    rounded_box(axis, (0.21, 0.64), 0.16, 0.15, "Image corruption\nestimator $z_I$", face=amber)
+    rounded_box(axis, (0.21, 0.34), 0.16, 0.18, "Physical sensor encoder\n$z_m=h(m)$\nreliability $q$", face=blue)
+    rounded_box(axis, (0.21, 0.13), 0.16, 0.13, "Partial-modality masks\n" + r"$C,I,V\in\{0,1\}$", face=grey)
+
+    rounded_box(
+        axis,
+        (0.43, 0.36),
+        0.18,
+        0.27,
+        "Joint capture state\n$s=[z_I,z_m,|z_m-z_I|,q]$\n\nmissing groups fall back\nto image evidence",
+        face=green,
+        fontsize=6.5,
+        weight="bold",
+    )
+
+    rounded_box(
+        axis,
+        (0.66, 0.40),
+        0.17,
+        0.31,
+        "Shared DeMoE backbone\n"
+        "sensor-grounded top-1 route\n\n"
+        "nine low-rank adapters\n"
+        + r"encoder $\rightarrow$ bottleneck"
+        + "\n"
+        + r"$\rightarrow$ decoder",
+        face=green,
+        fontsize=6.3,
+    )
+
+    rounded_box(axis, (0.86, 0.50), 0.12, 0.20, "One restored image\n$I_r$\n\nno view or\nbox fusion", face=red, fontsize=6.2, weight="bold")
+    rounded_box(axis, (0.86, 0.20), 0.12, 0.14, "Unchanged\nroad-defect detector", face=grey, fontsize=6.2)
+
+    arrow(axis, (0.15, 0.71), (0.21, 0.71))
+    # Main image path: the image itself always enters the shared restorer.
+    axis.add_patch(
+        FancyArrowPatch(
+            (0.15, 0.77),
+            (0.66, 0.66),
+            arrowstyle="-|>",
+            mutation_scale=8,
+            linewidth=0.85,
+            color="#30343b",
+            connectionstyle="arc3,rad=-0.18",
+        )
+    )
+    axis.text(0.48, 0.825, "image stream", ha="center", va="center", fontsize=6.1)
+    arrow(axis, (0.15, 0.38), (0.21, 0.43))
+    arrow(axis, (0.15, 0.33), (0.21, 0.20))
+    arrow(axis, (0.37, 0.71), (0.43, 0.58))
+    arrow(axis, (0.37, 0.43), (0.43, 0.50))
+    arrow(axis, (0.37, 0.20), (0.47, 0.36))
+    arrow(axis, (0.61, 0.50), (0.66, 0.54))
+    arrow(axis, (0.83, 0.56), (0.86, 0.59))
+    arrow(axis, (0.92, 0.50), (0.92, 0.34))
+
+    axis.text(0.015, 0.93, "TRACE-R inference", fontsize=8.4, fontweight="bold")
+    axis.plot([0.015, 0.985], [0.90, 0.90], color="#30343b", linewidth=0.7)
+    axis.text(
+        0.5,
+        0.035,
+        r"Adapter: $x'_l=x_l+a_l(s,q)P_l\,\sigma(D_l(Q_l\,\mathcal{N}(x_l);s))$; "
+        r"$P_l$ is zero-initialized, so the matched backbone is unchanged before adaptation.",
+        ha="center",
+        va="bottom",
+        fontsize=6.6,
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, bbox_inches="tight")
     plt.close(fig)
+
+
+def build_controlled_figure(
+    aggregate: dict[str, dict[str, str]],
+    controls: list[dict[str, str]],
+    path: Path,
+) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(7.16, 2.55), constrained_layout=True)
+    methods = ("raw", "nafnet", "nafnet_meta", "instructir", "dfpir", "demoe_auto", "trace_r")
+    values = [float(aggregate[method]["joint_mean_map50"]) for method in methods]
+    colors = ["#a8adb3", "#8fb7cc", "#77a8c3", "#d5a85e", "#6e9d80", "#9676a8", "#b33a3a"]
+    axes[0].bar(np.arange(len(methods)), values, color=colors, edgecolor="#30343b", linewidth=0.45)
+    axes[0].set_xticks(np.arange(len(methods)), [DISPLAY[method].replace("*", "") for method in methods], rotation=32, ha="right")
+    axes[0].set_ylabel("Joint mean mAP50")
+    axes[0].set_ylim(0.0, max(values) * 1.2)
+    axes[0].set_title("Sealed controlled test")
+    axes[0].grid(axis="y", color="#d8dadd", linewidth=0.45)
+    for index_value, value in enumerate(values):
+        axes[0].text(index_value, value + 0.008, f"{value:.3f}", ha="center", va="bottom", fontsize=5.7)
+
+    control_labels = ["Aligned", "Unavailable", "Wrong"]
+    control_values = [float(row["joint_mean_map50"]) for row in controls]
+    axes[1].bar(
+        np.arange(3),
+        control_values,
+        color=["#b33a3a", "#8fb7cc", "#a8adb3"],
+        edgecolor="#30343b",
+        linewidth=0.45,
+    )
+    axes[1].set_xticks(np.arange(3), control_labels)
+    axes[1].set_ylabel("Joint validation mAP50")
+    axes[1].set_ylim(0.0, max(control_values) * 1.2)
+    axes[1].set_title("Capture-packet intervention")
+    axes[1].grid(axis="y", color="#d8dadd", linewidth=0.45)
+    for index_value, value in enumerate(control_values):
+        axes[1].text(index_value, value + 0.008, f"{value:.3f}", ha="center", va="bottom", fontsize=6.0)
+
+    for axis in axes:
+        axis.spines[["top", "right"]].set_visible(False)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+
+
+def build_crid_figure(rows: list[dict[str, str]], path: Path) -> None:
+    order = ("raw", "nafnet", "instructir", "dfpir", "demoe_auto", "rmr_fine_eta0p5")
+    display = {
+        "raw": "Native",
+        "nafnet": "NAFNet",
+        "instructir": "InstructIR",
+        "dfpir": "DFPIR",
+        "demoe_auto": "DeMoE-auto",
+        "rmr_fine_eta0p5": "TRACE-R",
+    }
+    indexed = index(rows, "method")
+    ap10 = [float(indexed[method]["ap10_primary"]) for method in order]
+    ap50 = [float(indexed[method]["ap50_primary"]) for method in order]
+    x = np.arange(len(order))
+    width = 0.36
+    fig, axis = plt.subplots(figsize=(3.5, 2.45))
+    axis.bar(x - width / 2, ap10, width, label="AP@.10", color="#8fb7cc", edgecolor="#30343b", linewidth=0.45)
+    axis.bar(x + width / 2, ap50, width, label="AP@.50", color="#b33a3a", edgecolor="#30343b", linewidth=0.45)
+    axis.set_xticks(x, [display[method] for method in order], rotation=30, ha="right")
+    axis.set_ylabel("Average precision")
+    axis.set_ylim(0.0, 0.68)
+    axis.grid(axis="y", color="#d8dadd", linewidth=0.45)
+    axis.spines[["top", "right"]].set_visible(False)
+    axis.legend(frameon=False, ncol=2, loc="upper left")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--paper", type=Path, default=PAPER)
+    parser.add_argument("--controlled", type=Path, default=CONTROLLED)
+    parser.add_argument("--controls", type=Path, default=CONTROLS)
+    parser.add_argument("--crid", type=Path, default=CRID)
+    return parser.parse_args()
 
 
 def main() -> None:
+    args = parse_args()
     configure_style()
-    FIGURES.mkdir(parents=True, exist_ok=True)
-    TABLES.mkdir(parents=True, exist_ok=True)
-    ledger = json.loads(LEDGER_PATH.read_text(encoding="utf-8"))
-    if ledger.get("status") != "FROZEN_VALIDATION_ONLY" or ledger.get("test_split_used") is not False:
-        raise RuntimeError("TRACE-R paper assets require the frozen validation-only ledger")
-    build_tables(ledger)
-    build_architecture()
-    build_controlled_results(ledger)
-    build_controlled_qualitative()
-    build_crid_results()
-    build_wrapped_field_assets()
-    build_crid_overlays()
-    build_crid_validation_example()
+    tables = args.paper / "tables"
+    figures = args.paper / "figures"
+    tables.mkdir(parents=True, exist_ok=True)
+    figures.mkdir(parents=True, exist_ok=True)
+
+    ledger_path = args.controlled / "final_provenance_ledger.json"
+    ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+    aggregate_rows = read_csv(args.controlled / "detection" / "aggregate_metrics.csv")
+    aggregate = index(aggregate_rows, "method")
+    condition_rows = read_csv(args.controlled / "detection" / "all_condition_metrics.csv")
+    fidelity_rows = read_csv(args.controlled / "fidelity" / "all_summary.csv")
+    control_rows = read_csv(args.controls / "metadata_control_summary.csv")
+    crid_rows = read_csv(args.crid / "test_summary.csv")
+
+    write(tables / "table_controlled_summary.tex", build_controlled_table(aggregate))
+    write(tables / "table_condition_results.tex", build_condition_table(condition_rows))
+    write(tables / "table_fidelity.tex", build_fidelity_table(fidelity_rows))
+    write(tables / "table_metadata_controls.tex", build_control_table(control_rows))
+    write(tables / "table_crid.tex", build_crid_table(crid_rows))
+    write(tables / "table_training_audit.tex", build_training_table(ledger))
+
+    build_architecture_figure(figures / "fig_trace_architecture.pdf")
+    build_controlled_figure(aggregate, control_rows, figures / "fig_trace_controlled_results.pdf")
+    build_crid_figure(crid_rows, figures / "fig_trace_crid_ap.pdf")
+
+    # Keep the provenance manifest explicit. Legacy manuscript assets may still
+    # exist in a working tree, but they must never enter the final evidence set.
+    outputs = [
+        tables / "table_controlled_summary.tex",
+        tables / "table_condition_results.tex",
+        tables / "table_fidelity.tex",
+        tables / "table_metadata_controls.tex",
+        tables / "table_crid.tex",
+        tables / "table_training_audit.tex",
+        figures / "fig_trace_architecture.pdf",
+        figures / "fig_trace_controlled_results.pdf",
+        figures / "fig_trace_crid_ap.pdf",
+    ]
     manifest = {
-        "status": "COMPLETE",
-        "method": "TRACE-R",
-        "source_ledger": LEDGER_PATH.relative_to(ROOT).as_posix(),
-        "test_split_used": False,
-        "figure_format": "PDF with vector labels and borders",
-        "figures": [
-            "fig_trace_architecture.pdf",
-            "fig_trace_controlled_results.pdf",
-            "fig_trace_pcm_qualitative.pdf",
-            "fig_trace_ivcnz_qualitative.pdf",
-            "fig_trace_crid_ap.pdf",
-            "fig_trace_crid_validation_example.pdf",
-            "fig_trace_crid_all13.pdf",
-        ],
-        "tables": [
-            "table_controlled_summary.tex",
-            "table_condition_results.tex",
-            "table_metadata_controls.tex",
-            "table_fidelity.tex",
-            "table_crid.tex",
-            "table_training_audit.tex",
-            "table_checkpoints.tex",
-        ],
+        "status": "paper_assets_complete",
+        "training_or_selection_performed": False,
+        "detector_output_fusion": False,
+        "single_restored_image_per_method": True,
+        "sources": {
+            "controlled": str(args.controlled),
+            "metadata_controls": str(args.controls),
+            "crid": str(args.crid),
+            "controlled_ledger_sha256": sha256(ledger_path),
+        },
+        "outputs": {str(path.relative_to(args.paper)): sha256(path) for path in outputs},
     }
-    write(ROOT / "experiments" / "trace_r_journal_asset_manifest_20260824.json", json.dumps(manifest, indent=2))
+    write(args.paper / "asset_manifest.json", json.dumps(manifest, indent=2))
     print(json.dumps(manifest, indent=2))
 
 

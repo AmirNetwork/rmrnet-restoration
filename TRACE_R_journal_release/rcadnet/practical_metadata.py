@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Observable camera/IMU/vehicle packet shared by TRACE-R and RMR-P.
+"""Observable camera/IMU/vehicle packet used by TRACE-R.
 
 Paired synthetic data retain exact rendering parameters for cause supervision,
 but a deployed camera does not observe a hidden blur kernel. This module defines
@@ -674,8 +674,8 @@ class PracticalSensorEncoder(nn.Module):
             pattern_index,
             self.availability_physical_experts,
         )
-        # Paper: z_sensor = z_physics + r * Delta z.  residual_scale bounds
-        # the learned calibration Delta z; zero is the direct-physics control.
+        # Manuscript Eq. (sensorcode): z_m = h_phy(m) + r_g * eps * tanh(Delta h).
+        # residual_scale is eps; zero gives the direct-physics control.
         residual = self.residual_scale * torch.tanh(
             self.fuse(features) + conditioning_expert
         )

@@ -1,19 +1,16 @@
-"""Model exports for TRACE-R and historical checkpoint-compatible networks."""
+"""Public model exports for the accepted single-output TRACE-R release."""
 
 # Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 
 from .rmrnet import RMRP, RMRNet
-from .tracer import TRACERExpertFusion, TRACERPolicy
-from .tracer_detection_policy import (
-    DetectorEvidencePolicy,
-    apply_detector_evidence_policy,
+from .tracer_sensor_adapter import (
+    SensorConditionedLowRankAdapter,
+    TRACESensorAdapterDeMoE,
 )
 
 __all__ = [
-    "TRACERExpertFusion",
-    "TRACERPolicy",
-    "DetectorEvidencePolicy",
-    "apply_detector_evidence_policy",
     "RMRP",
     "RMRNet",
+    "SensorConditionedLowRankAdapter",
+    "TRACESensorAdapterDeMoE",
 ]

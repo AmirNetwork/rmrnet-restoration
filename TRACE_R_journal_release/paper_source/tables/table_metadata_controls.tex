@@ -1,0 +1,17 @@
+\begin{table}[!t]
+\centering
+\caption{Validation-only intervention on TRACE-R's capture packet.}
+\label{tab:metadata_controls}
+\scriptsize
+\begin{tabular}{lrrr}
+\toprule
+Packet supplied at inference & IVCNZ mAP50 & PCM mAP50 & Joint mAP50 \\
+\midrule
+Aligned packet & \textbf{0.521} & \textbf{0.284} & \textbf{0.402} \\
+All groups unavailable & 0.474 & 0.239 & 0.356 \\
+Wrong-condition packet & 0.453 & 0.206 & 0.329 \\
+\bottomrule
+\end{tabular}
+\vspace{1mm}
+\parbox{0.97\columnwidth}{\scriptsize Only the packet changes; images, model weights, and frozen detectors remain fixed.}
+\end{table}

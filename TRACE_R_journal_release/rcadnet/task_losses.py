@@ -235,6 +235,7 @@ class FrozenDetectorFeatureExtractor(nn.Module):
         *,
         max_layers: int = 3,
         input_size: Optional[Tuple[int, int]] = None,
+        letterbox: bool = False,
         normalize_imagenet: bool = False,
         verbose: bool = True,
     ) -> None:
@@ -242,6 +243,7 @@ class FrozenDetectorFeatureExtractor(nn.Module):
 
         self.detector = unwrap_detector(detector).eval()
         self.input_size = input_size
+        self.letterbox = bool(letterbox)
         self.normalize_imagenet = bool(normalize_imagenet)
         self.verbose = bool(verbose)
 
@@ -328,12 +330,37 @@ class FrozenDetectorFeatureExtractor(nn.Module):
         y = x.clamp(0.0, 1.0)
 
         if self.input_size is not None and y.shape[-2:] != self.input_size:
-            y = F.interpolate(
-                y,
-                size=self.input_size,
-                mode="bilinear",
-                align_corners=False,
-            )
+            if self.letterbox:
+                source_h, source_w = y.shape[-2:]
+                target_h, target_w = self.input_size
+                scale = min(target_h / source_h, target_w / source_w)
+                resized_h = max(1, min(target_h, int(round(source_h * scale))))
+                resized_w = max(1, min(target_w, int(round(source_w * scale))))
+                pad_h = target_h - resized_h
+                pad_w = target_w - resized_w
+                top = pad_h // 2
+                bottom = pad_h - top
+                left = pad_w // 2
+                right = pad_w - left
+                y = F.interpolate(
+                    y,
+                    size=(resized_h, resized_w),
+                    mode="bilinear",
+                    align_corners=False,
+                )
+                y = F.pad(
+                    y,
+                    (left, right, top, bottom),
+                    mode="constant",
+                    value=114.0 / 255.0,
+                )
+            else:
+                y = F.interpolate(
+                    y,
+                    size=self.input_size,
+                    mode="bilinear",
+                    align_corners=False,
+                )
 
         if self.normalize_imagenet:
             mean = torch.tensor(
@@ -504,6 +531,217 @@ class TaskDrivenPerceptualLoss(nn.Module):
 
 
 # ---------------------------------------------------------------------
+# Clean-detector evidence distillation
+# ---------------------------------------------------------------------
+
+
+class DetectorEvidenceDistillationLoss(nn.Module):
+    """Match clean-image detector evidence before thresholding or NMS.
+
+    The frozen detector is a training instrument only.  Given its dense class
+    logits ``s`` and distributional box logits ``b``, the objective is
+
+        L_DED = BCE(s_r, stopgrad(sigmoid(s_c)))
+              + lambda_b KL(stopgrad(softmax(b_c)) || softmax(b_r)).
+
+    The classification term uses the clean detector's strongest anchors plus a
+    small set of hard background anchors.  The box term is evaluated only at
+    clean foreground anchors.  This avoids a background-dominated dense loss
+    and transfers clean evidence without fusing predictions at inference.
+    """
+
+    def __init__(
+        self,
+        detector: nn.Module,
+        *,
+        input_size: Tuple[int, int] = (320, 320),
+        letterbox: bool = True,
+        foreground_topk: int = 96,
+        background_topk: int = 96,
+        box_weight: float = 0.25,
+        temperature: float = 1.0,
+        eps: float = 1e-6,
+    ) -> None:
+        super().__init__()
+        self.detector = unwrap_detector(detector).eval()
+        self.input_size = tuple(int(v) for v in input_size)
+        self.letterbox = bool(letterbox)
+        self.foreground_topk = max(int(foreground_topk), 1)
+        self.background_topk = max(int(background_topk), 0)
+        self.box_weight = float(box_weight)
+        self.temperature = float(temperature)
+        self.eps = float(eps)
+        if self.temperature <= 0.0:
+            raise ValueError("temperature must be positive")
+        if self.box_weight < 0.0:
+            raise ValueError("box_weight must be non-negative")
+        self.last_stats: Dict[str, torch.Tensor] = {}
+        for parameter in self.detector.parameters():
+            parameter.requires_grad_(False)
+
+    def _prepare_input(self, image: torch.Tensor) -> torch.Tensor:
+        image = image.clamp(0.0, 1.0)
+        if image.shape[-2:] == self.input_size:
+            return image
+        if not self.letterbox:
+            return F.interpolate(
+                image,
+                size=self.input_size,
+                mode="bilinear",
+                align_corners=False,
+            )
+        source_h, source_w = image.shape[-2:]
+        target_h, target_w = self.input_size
+        scale = min(target_h / source_h, target_w / source_w)
+        resized_h = max(1, min(target_h, int(round(source_h * scale))))
+        resized_w = max(1, min(target_w, int(round(source_w * scale))))
+        pad_h = target_h - resized_h
+        pad_w = target_w - resized_w
+        top = pad_h // 2
+        bottom = pad_h - top
+        left = pad_w // 2
+        right = pad_w - left
+        image = F.interpolate(
+            image,
+            size=(resized_h, resized_w),
+            mode="bilinear",
+            align_corners=False,
+        )
+        return F.pad(
+            image,
+            (left, right, top, bottom),
+            mode="constant",
+            value=114.0 / 255.0,
+        )
+
+    @staticmethod
+    def _dense_outputs(
+        detector_output: Any,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Extract Ultralytics pre-NMS class and DFL box logits."""
+
+        if not isinstance(detector_output, (tuple, list)) or len(detector_output) < 2:
+            raise RuntimeError(
+                "Detector evidence distillation requires eval-mode dense outputs."
+            )
+        auxiliary = detector_output[1]
+        if not isinstance(auxiliary, dict):
+            raise RuntimeError("Detector did not return an auxiliary output dictionary.")
+        scores = auxiliary.get("scores")
+        boxes = auxiliary.get("boxes")
+        if not isinstance(scores, torch.Tensor) or not isinstance(boxes, torch.Tensor):
+            raise RuntimeError(
+                "Detector auxiliary outputs must contain tensor 'scores' and 'boxes'."
+            )
+        if scores.ndim != 3 or boxes.ndim != 3:
+            raise RuntimeError("Expected dense detector tensors with shape BxCxA.")
+        if scores.shape[0] != boxes.shape[0] or scores.shape[2] != boxes.shape[2]:
+            raise RuntimeError("Dense class and box outputs have incompatible shapes.")
+        if boxes.shape[1] % 4 != 0:
+            raise RuntimeError("Distributional box channels must be divisible by four.")
+        return scores, boxes
+
+    @staticmethod
+    def _gather_anchors(tensor: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
+        return torch.gather(
+            tensor,
+            dim=2,
+            index=index[:, None, :].expand(-1, tensor.shape[1], -1),
+        )
+
+    def forward(self, restored: torch.Tensor, clean: torch.Tensor) -> torch.Tensor:
+        self.detector.eval()
+        for parameter in self.detector.parameters():
+            parameter.requires_grad_(False)
+
+        restored_input = self._prepare_input(restored)
+        clean_input = self._prepare_input(clean)
+        restored_scores, restored_boxes = self._dense_outputs(
+            self.detector(restored_input)
+        )
+        with torch.no_grad():
+            clean_scores, clean_boxes = self._dense_outputs(
+                self.detector(clean_input)
+            )
+
+        teacher_probability = torch.sigmoid(
+            clean_scores.detach() / self.temperature
+        )
+        foreground_score = teacher_probability.amax(dim=1)
+        anchors = foreground_score.shape[1]
+        foreground_k = min(self.foreground_topk, anchors)
+        foreground_index = foreground_score.topk(
+            foreground_k,
+            dim=1,
+            largest=True,
+        ).indices
+
+        selected_index = foreground_index
+        if self.background_topk > 0 and anchors > foreground_k:
+            # Hard negatives are anchors where the restored detector is more
+            # confident than the clean teacher. The teacher path is detached;
+            # selection itself carries no gradient and cannot become a shortcut.
+            with torch.no_grad():
+                restored_probability = torch.sigmoid(
+                    restored_scores.detach() / self.temperature
+                ).amax(dim=1)
+                excess = restored_probability - foreground_score
+                excess.scatter_(1, foreground_index, float("-inf"))
+                background_k = min(self.background_topk, anchors - foreground_k)
+                background_index = excess.topk(
+                    background_k,
+                    dim=1,
+                    largest=True,
+                ).indices
+            selected_index = torch.cat((foreground_index, background_index), dim=1)
+
+        student_selected = self._gather_anchors(restored_scores, selected_index)
+        teacher_selected = self._gather_anchors(teacher_probability, selected_index)
+        classification = F.binary_cross_entropy_with_logits(
+            student_selected / self.temperature,
+            teacher_selected,
+            reduction="mean",
+        ) * (self.temperature * self.temperature)
+
+        reg_max = clean_boxes.shape[1] // 4
+        student_boxes = self._gather_anchors(restored_boxes, foreground_index)
+        teacher_boxes = self._gather_anchors(clean_boxes.detach(), foreground_index)
+        student_boxes = student_boxes.reshape(
+            student_boxes.shape[0], 4, reg_max, foreground_k
+        )
+        teacher_boxes = teacher_boxes.reshape(
+            teacher_boxes.shape[0], 4, reg_max, foreground_k
+        )
+        teacher_distribution = F.softmax(
+            teacher_boxes / self.temperature,
+            dim=2,
+        )
+        box_distribution = F.kl_div(
+            F.log_softmax(student_boxes / self.temperature, dim=2),
+            teacher_distribution,
+            reduction="batchmean",
+        )
+        box_distribution = box_distribution / float(4 * foreground_k)
+        box_distribution = box_distribution * (self.temperature * self.temperature)
+
+        total = classification + self.box_weight * box_distribution
+        self.last_stats = {
+            "evidence_distillation_classification": classification.detach(),
+            "evidence_distillation_box": box_distribution.detach(),
+            "evidence_distillation_teacher_foreground": self._gather_anchors(
+                foreground_score[:, None, :], foreground_index
+            ).mean().detach(),
+            "evidence_distillation_foreground_anchors": restored.new_tensor(
+                float(foreground_k)
+            ),
+            "evidence_distillation_selected_anchors": restored.new_tensor(
+                float(selected_index.shape[1])
+            ),
+        }
+        return total
+
+
+# ---------------------------------------------------------------------
 # Frozen detector supervised loss
 # ---------------------------------------------------------------------
 
@@ -531,24 +769,36 @@ class FrozenDetectorSupervisedLoss(nn.Module):
         detector: nn.Module,
         *,
         input_size: Optional[Tuple[int, int]] = None,
+        letterbox: bool = False,
         cqmix_grid: int = 4,
         cqmix_prob: float = 0.25,
         clean_hinge_weight: float = 0.25,
         clean_margin: float = 0.0,
         normalization_floor: float = 1.0,
+        box_multiplier: float = 1.0,
+        class_multiplier: float = 1.0,
+        dfl_multiplier: float = 1.0,
         eps: float = 1e-4,
     ) -> None:
         super().__init__()
         self.detector = unwrap_detector(detector).eval()
         self.input_size = input_size
+        self.letterbox = bool(letterbox)
         self.cqmix_grid = int(cqmix_grid)
         self.cqmix_prob = float(cqmix_prob)
         self.clean_hinge_weight = float(clean_hinge_weight)
         self.clean_margin = float(clean_margin)
         self.normalization_floor = float(normalization_floor)
+        self.component_multipliers = {
+            "box": float(box_multiplier),
+            "cls": float(class_multiplier),
+            "dfl": float(dfl_multiplier),
+        }
         self.eps = float(eps)
         if self.normalization_floor <= 0.0:
             raise ValueError("normalization_floor must be positive")
+        if any(value < 0.0 for value in self.component_multipliers.values()):
+            raise ValueError("detector component multipliers must be non-negative")
         self.last_stats: Dict[str, torch.Tensor] = {}
 
         for parameter in self.detector.parameters():
@@ -568,20 +818,82 @@ class FrozenDetectorSupervisedLoss(nn.Module):
                     "Could not initialize the frozen Ultralytics detection "
                     "criterion from checkpoint arguments."
                 ) from exc
+        # Ultralytics applies these gains inside its differentiable criterion.
+        # Multiplying them here exposes a controlled box/class/DFL balance
+        # without reimplementing target assignment or detaching the image path.
+        for name, multiplier in self.component_multipliers.items():
+            if hasattr(self.detector.args, name):
+                value = float(getattr(self.detector.args, name))
+                setattr(self.detector.args, name, value * multiplier)
         # Rebuild the criterion after normalizing detector.args.
         if hasattr(self.detector, "criterion"):
             self.detector.criterion = None
 
-    def _prepare_image(self, image: torch.Tensor) -> torch.Tensor:
+    def _prepare_image_and_targets(
+        self,
+        image: torch.Tensor,
+        targets: Dict[str, torch.Tensor],
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+        """Apply the detector geometry to images and normalized boxes.
+
+        The legacy path preserves the historical direct resize used for square
+        training crops. Full-frame calibration enables ``letterbox=True`` so a
+        640x360 PCM frame follows the same aspect-preserving geometry as the
+        Ultralytics validation pipeline rather than being stretched to square.
+        """
+
         image = image.clamp(0.0, 1.0)
-        if self.input_size is not None and image.shape[-2:] != self.input_size:
-            image = F.interpolate(
+        if self.input_size is None or image.shape[-2:] == self.input_size:
+            return image, targets
+        if not self.letterbox:
+            return (
+                F.interpolate(
+                    image,
+                    size=self.input_size,
+                    mode="bilinear",
+                    align_corners=False,
+                ),
+                targets,
+            )
+
+        source_h, source_w = image.shape[-2:]
+        target_h, target_w = self.input_size
+        scale = min(target_h / source_h, target_w / source_w)
+        resized_h = max(1, min(target_h, int(round(source_h * scale))))
+        resized_w = max(1, min(target_w, int(round(source_w * scale))))
+        pad_h = target_h - resized_h
+        pad_w = target_w - resized_w
+        top = pad_h // 2
+        bottom = pad_h - top
+        left = pad_w // 2
+        right = pad_w - left
+        image = F.interpolate(
                 image,
-                size=self.input_size,
+                size=(resized_h, resized_w),
                 mode="bilinear",
                 align_corners=False,
             )
-        return image
+        image = F.pad(
+            image,
+            (left, right, top, bottom),
+            mode="constant",
+            value=114.0 / 255.0,
+        )
+
+        adjusted = dict(targets)
+        boxes = targets["bboxes"].clone()
+        if boxes.numel():
+            boxes[:, 0] = (
+                boxes[:, 0] * source_w * scale + left
+            ) / target_w
+            boxes[:, 1] = (
+                boxes[:, 1] * source_h * scale + top
+            ) / target_h
+            boxes[:, 2] = boxes[:, 2] * source_w * scale / target_w
+            boxes[:, 3] = boxes[:, 3] * source_h * scale / target_h
+            boxes.clamp_(0.0, 1.0)
+        adjusted["bboxes"] = boxes
+        return image, adjusted
 
     @staticmethod
     def _flatten_targets(
@@ -613,7 +925,7 @@ class FrozenDetectorSupervisedLoss(nn.Module):
         targets: Dict[str, torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         batch: Dict[str, Any] = {
-            "img": self._prepare_image(image),
+            "img": image,
             "cls": targets["cls"],
             "bboxes": targets["bboxes"],
             "batch_idx": targets["batch_idx"],
@@ -623,11 +935,19 @@ class FrozenDetectorSupervisedLoss(nn.Module):
             raise RuntimeError(
                 "Frozen detector did not return Ultralytics loss components."
             )
-        parts = result[0]
-        if not isinstance(parts, torch.Tensor):
+        differentiable_loss = result[0]
+        if not isinstance(differentiable_loss, torch.Tensor):
             raise RuntimeError("Frozen detector loss is not a tensor.")
-        parts = parts.reshape(-1)
-        total = parts.sum() / max(int(image.shape[0]), 1)
+        # Ultralytics returns (differentiable scalar * batch_size,
+        # detached [box, cls, dfl]). The toy/test detector may return a
+        # differentiable component vector; summation supports both forms.
+        total = differentiable_loss.reshape(-1).sum() / max(int(image.shape[0]), 1)
+        detached_parts = result[1]
+        parts = (
+            detached_parts.reshape(-1)
+            if isinstance(detached_parts, torch.Tensor)
+            else differentiable_loss.detach().reshape(-1)
+        )
         return total, parts
 
     def forward(
@@ -650,9 +970,17 @@ class FrozenDetectorSupervisedLoss(nn.Module):
             grid=self.cqmix_grid,
             prob=self.cqmix_prob,
         )
-        restored_total, restored_parts = self._detector_loss(mixed, targets)
+        mixed, prepared_targets = self._prepare_image_and_targets(mixed, targets)
+        clean, _ = self._prepare_image_and_targets(clean, targets)
+        restored_total, restored_parts = self._detector_loss(
+            mixed,
+            prepared_targets,
+        )
         with torch.no_grad():
-            clean_total, clean_parts = self._detector_loss(clean, targets)
+            clean_total, clean_parts = self._detector_loss(
+                clean,
+                prepared_targets,
+            )
 
         # Some background/clean crops are already nearly perfect for the
         # frozen detector. Dividing by that near-zero clean loss creates an

@@ -1,0 +1,23 @@
+{
+  "status": "paper_assets_complete",
+  "training_or_selection_performed": false,
+  "detector_output_fusion": false,
+  "single_restored_image_per_method": true,
+  "sources": {
+    "controlled": "E:\\TRACE_R_experiments\\trace_locked_confirmatory_v65_20260828",
+    "metadata_controls": "E:\\TRACE_R_experiments\\trace_metadata_controls_v66_20260828",
+    "crid": "E:\\TRACE_R_experiments\\trace_crid46_direct_v67_20260828",
+    "controlled_ledger_sha256": "31582f75ed5dff57d3c8e6f68ecf570e4f56882ddc6193586e2a57fc5dd58021"
+  },
+  "outputs": {
+    "tables\\table_controlled_summary.tex": "f86afc97f9f61d85e0b91733a903c90ea6dacacb381fff68234ae4fdb73d9752",
+    "tables\\table_condition_results.tex": "469740cbe39572f48f4a3d7384f0d01d03a79335ce7bb855211fea260b40c265",
+    "tables\\table_fidelity.tex": "d039935385d6aa27bc2a6c20b12e37118983fbad96b0edb2cf01a78c20d0b371",
+    "tables\\table_metadata_controls.tex": "03654f4bb277ab910ff67057a68a2fffe7dc4db134947adebb57708cf0206819",
+    "tables\\table_crid.tex": "ac8c651cee35993963a1db44fd390f1415a03e54bc4935b00e63873b595a5e7b",
+    "tables\\table_training_audit.tex": "37ca35fb4016995d5d55abbe997dd96bcfc80c5db52cdc7611981a2fdb28a64a",
+    "figures\\fig_trace_architecture.pdf": "eb0baf7d9455453a497acd24ab953d2690cf2189a37ac001b5cd73f77e713ed1",
+    "figures\\fig_trace_controlled_results.pdf": "89684c5abc765e007a25b37858ade8f5519808a81eca8786ed1f646da445238d",
+    "figures\\fig_trace_crid_ap.pdf": "ed1b61ecfeeebf14a7d3fd91a9b4ab9a3d8e027877f4e04604d9a100676d2f68"
+  }
+}

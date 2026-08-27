@@ -1,0 +1,15 @@
+torch==2.11.0
+torchvision
+numpy
+Pillow
+PyYAML
+opencv-python
+scipy
+scikit-image
+matplotlib
+pandas
+ultralytics==8.4.53
+pytest
+timm
+einops
+transformers

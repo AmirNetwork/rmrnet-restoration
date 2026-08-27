@@ -11,10 +11,26 @@ from torch import nn
 
 
 DFPIR_ROOT = Path(__file__).resolve().parents[1] / "third_party" / "DFPIR-main"
-if str(DFPIR_ROOT) not in sys.path:
-    sys.path.insert(0, str(DFPIR_ROOT))
 
-from net.model import ChannelShuffle_skip_textguaid  # noqa: E402
+
+def _load_dfpir_model_class() -> type[nn.Module]:
+    """Load the official DFPIR class only when that baseline is instantiated.
+
+    TRACE-R and the other baselines can therefore be imported and unit-tested
+    before the separately licensed DFPIR repository has been downloaded.
+    """
+
+    if not DFPIR_ROOT.exists():
+        raise FileNotFoundError(
+            f"DFPIR repository was not found at {DFPIR_ROOT}. "
+            "Clone the official implementation into third_party/DFPIR-main."
+        )
+    root_text = str(DFPIR_ROOT)
+    if root_text not in sys.path:
+        sys.path.insert(0, root_text)
+    from net.model import ChannelShuffle_skip_textguaid
+
+    return ChannelShuffle_skip_textguaid
 
 
 DFPIR_PROMPTS = {
@@ -63,6 +79,7 @@ class DFPIRAdapter(nn.Module):
         self.clip_model = None
         self.clip_device = torch.device("cpu")
         self._text_cache: dict[str, torch.Tensor] = {}
+        model_class = _load_dfpir_model_class()
 
         if weights is not None and not smoke and not use_clip:
             raise ValueError(
@@ -71,7 +88,7 @@ class DFPIRAdapter(nn.Module):
             )
 
         if smoke and weights is None:
-            self.model = ChannelShuffle_skip_textguaid(
+            self.model = model_class(
                 dim=8,
                 num_blocks=[1, 1, 1, 1],
                 num_refinement_blocks=1,
@@ -79,7 +96,7 @@ class DFPIRAdapter(nn.Module):
                 device=str(self.device),
             )
         else:
-            self.model = ChannelShuffle_skip_textguaid(device=str(self.device))
+            self.model = model_class(device=str(self.device))
         self.model.to(self.device).eval()
 
         if weights:

@@ -1,4 +1,3 @@
-# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from __future__ import annotations
 
 """Differentiable exposure-motion physics for PI-RMR-Net.
@@ -417,6 +416,86 @@ class RotationExposurePhysics(nn.Module):
             )
             estimate = (estimate + update).clamp(0.0, 1.0)
         return estimate
+
+    @staticmethod
+    def match_observation_photometry(
+        observed: torch.Tensor,
+        reference: torch.Tensor,
+        *,
+        epsilon: float = 1.0e-4,
+        maximum_scale: float = 4.0,
+    ) -> torch.Tensor:
+        """Remove global exposure nuisance before enforcing motion physics.
+
+        The rotation operator explains geometric exposure blur, not camera
+        gain or a low-light response curve.  For compound captures we therefore
+        align the observed per-channel mean and standard deviation to the
+        current clean-image estimate before evaluating ``H_m x``.  Statistics
+        are detached: this is an observation calibration, not a route through
+        which the network can reduce the loss by changing global contrast.
+
+        This operation uses image evidence only and remains valid when camera
+        metadata are partial.  It is identity-like for pure motion captures.
+        """
+
+        if observed.shape != reference.shape:
+            raise ValueError("Observed and reference images must have equal shape")
+        dims = (-2, -1)
+        observed_mean = observed.mean(dim=dims, keepdim=True).detach()
+        reference_mean = reference.mean(dim=dims, keepdim=True).detach()
+        observed_std = observed.std(dim=dims, keepdim=True, unbiased=False).detach()
+        reference_std = reference.std(dim=dims, keepdim=True, unbiased=False).detach()
+        scale = (reference_std / observed_std.clamp_min(epsilon)).clamp(
+            1.0 / maximum_scale,
+            maximum_scale,
+        )
+        return ((observed - observed_mean) * scale + reference_mean).clamp(0.0, 1.0)
+
+    @staticmethod
+    def data_consistency_step(
+        current: torch.Tensor,
+        observed: torch.Tensor,
+        state: ExposurePhysicsState,
+        *,
+        step_size: float = 0.65,
+        maximum_residual: float = 0.20,
+        photometric_normalization: bool = True,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Apply one measured-operator Landweber update to ``current``.
+
+        Paper form:
+
+            x^+ = x + alpha q_m H_m^T (y' - H_m x),
+
+        where ``H_m`` is constructed from exposure-synchronised angular rate,
+        ``q_m`` is its audited reliability, and ``y'`` is the observation after
+        optional global photometric alignment.  The reverse-flow average is a
+        stable approximation to the adjoint of the centred exposure operator.
+        The function returns the candidate, reblurred estimate, calibrated
+        observation, and bounded back-projected residual for transparent loss
+        accounting and diagnostics.
+        """
+
+        if current.shape != observed.shape:
+            raise ValueError("Current and observed images must have equal shape")
+        if not 0.0 < step_size <= 1.0:
+            raise ValueError("step_size must lie in (0, 1]")
+        if maximum_residual <= 0.0:
+            raise ValueError("maximum_residual must be positive")
+        calibrated = (
+            RotationExposurePhysics.match_observation_photometry(observed, current)
+            if photometric_normalization
+            else observed
+        )
+        reblurred = RotationExposurePhysics.reblur(current, state)
+        residual = calibrated - reblurred
+        adjoint = RotationExposurePhysics._warp_average(residual, -state.flow)
+        update = (step_size * state.reliability.to(current.dtype) * adjoint).clamp(
+            -maximum_residual,
+            maximum_residual,
+        )
+        candidate = (current + update).clamp(0.0, 1.0)
+        return candidate, reblurred, calibrated, update
 
 
 class PhysicsFeatureEncoder(nn.Module):

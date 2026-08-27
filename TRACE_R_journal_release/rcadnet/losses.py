@@ -1,4 +1,3 @@
-# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from __future__ import annotations
 
 import torch
@@ -35,7 +34,7 @@ def visibility_map(image: torch.Tensor) -> torch.Tensor:
 
 
 class RCADLoss(nn.Module):
-    """Restoration-fidelity group used by RMR-P.
+    """Restoration-fidelity group used by TRACE-R.
 
     The reported controlled checkpoint uses the ``simple`` profile:
 

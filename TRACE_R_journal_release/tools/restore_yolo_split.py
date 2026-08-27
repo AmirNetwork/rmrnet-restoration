@@ -29,6 +29,8 @@ from models.rmrnet import RMRNet
 from models.tracer import TRACERExpertFusion, TRACERPolicy
 from models.rmrp_metadata_demoe import RMRPMetadataDeMoE
 from models.rmrp_prompted_dfpir import RMRPPromptedDFPIR
+from models.tracer_sensor_adapter import TRACESensorAdapterDeMoE
+from models.tracer_sparse_wavelet import TRACERSparseDeMoE
 from rcadnet import code_from_metadata, code_from_scenario
 from rcadnet.practical_metadata import (
     ACCEL_END,
@@ -65,6 +67,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--scenario", required=True)
     parser.add_argument("--out", required=True)
     parser.add_argument("--device", default="cuda")
+    parser.add_argument(
+        "--max-images",
+        type=int,
+        default=0,
+        help=(
+            "Deterministic development-only image cap. Zero processes the full "
+            "split; positive values sample with --image-sample-seed."
+        ),
+    )
+    parser.add_argument("--image-sample-seed", type=int, default=2026)
     parser.add_argument("--rcadnet-weights")
     parser.add_argument(
         "--rcadnet-image-route-weights",
@@ -369,6 +381,67 @@ def parse_args() -> argparse.Namespace:
 def load_rcadnet(weights: str, device: torch.device) -> RMRNet:
     checkpoint = torch.load(weights, map_location=device, weights_only=False)
     arch = checkpoint.get("arch", {})
+    if arch.get("backbone") == "demoe_sensor_low_rank":
+        adapter = DeMoEAdapter(None, device=device, smoke=True)
+        model = TRACESensorAdapterDeMoE(
+            adapter.model,
+            sensor_gyro_full_scale=float(arch.get("sensor_gyro_full_scale", 4.0)),
+            top_k=int(arch.get("top_k", 1)),
+            use_refiner=bool(arch.get("use_refiner", False)),
+            backbone_route_mode=str(
+                arch.get("backbone_route_mode", "sensor_task")
+            ),
+            sensor_task_thresholds=tuple(
+                arch.get("sensor_task_thresholds", (0.18, 0.20, 0.385))
+            ),
+            sensor_task_mixed_expert=arch.get("sensor_task_mixed_expert"),
+            feature_rank=int(arch.get("feature_rank", 16)),
+            feature_max_gain=float(arch.get("feature_max_gain", 0.25)),
+            use_cause_feature_adapters=bool(
+                arch.get("use_cause_feature_adapters", False)
+            ),
+            cause_feature_max_gain=float(
+                arch.get("cause_feature_max_gain", 0.18)
+            ),
+        ).to(device)
+        try:
+            model.load_state_dict(checkpoint["model"], strict=True)
+        except RuntimeError as exc:
+            raise RuntimeError(
+                f"TRACE-R sensor-adapter checkpoint/model mismatch: {weights}."
+            ) from exc
+        model.eval()
+        return model
+    if arch.get("backbone") == "demoe_sparse_wavelet":
+        adapter = DeMoEAdapter(None, device=device, smoke=True)
+        model = TRACERSparseDeMoE(
+            adapter.model,
+            sensor_gyro_full_scale=float(arch.get("sensor_gyro_full_scale", 4.0)),
+            top_k=int(arch.get("top_k", 1)),
+            use_refiner=False,
+            backbone_route_mode=str(
+                arch.get("backbone_route_mode", "sensor_task")
+            ),
+            sensor_task_thresholds=tuple(
+                arch.get("sensor_task_thresholds", (0.18, 0.20, 0.385))
+            ),
+            sensor_task_mixed_expert=arch.get("sensor_task_mixed_expert"),
+            wavelet_hidden_channels=int(
+                arch.get("wavelet_hidden_channels", 48)
+            ),
+            wavelet_stages=int(arch.get("wavelet_stages", 3)),
+            wavelet_max_residual=float(
+                arch.get("wavelet_max_residual", 0.16)
+            ),
+        ).to(device)
+        try:
+            model.load_state_dict(checkpoint["model"], strict=True)
+        except RuntimeError as exc:
+            raise RuntimeError(
+                f"TRACE-R sparse-wavelet checkpoint/model mismatch: {weights}."
+            ) from exc
+        model.eval()
+        return model
     if arch.get("backbone") == "demoe_sensor_router":
         adapter = DeMoEAdapter(None, device=device, smoke=True)
         model = RMRPMetadataDeMoE(
@@ -393,8 +466,9 @@ def load_rcadnet(weights: str, device: torch.device) -> RMRNet:
                 arch.get("backbone_route_mode", "metadata")
             ),
             sensor_task_thresholds=tuple(
-                arch.get("sensor_task_thresholds", (0.18, 0.10, 0.385))
+                arch.get("sensor_task_thresholds", (0.18, 0.20, 0.385))
             ),
+            sensor_task_mixed_expert=arch.get("sensor_task_mixed_expert"),
             use_semantic_adapters=bool(
                 arch.get("use_semantic_adapters", False)
             ),
@@ -1067,6 +1141,11 @@ def main() -> None:
         scenario_code = None
 
     paths = sorted(p for p in image_dir.iterdir() if p.suffix.lower() in IMAGE_EXTS)
+    if args.max_images < 0:
+        raise ValueError("--max-images cannot be negative")
+    if args.max_images and len(paths) > args.max_images:
+        sampler = random.Random(args.image_sample_seed)
+        paths = sorted(sampler.sample(paths, args.max_images))
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
     metadata_conditioned = (
@@ -1544,7 +1623,13 @@ def main() -> None:
             # Restoration must not be followed by an uncontrolled second JPEG
             # degradation.  Export lossless PNG while retaining the source stem
             # so the unchanged YOLO label remains aligned.
-            TF.to_pil_image(restored[0].detach().cpu()).save(out_image_dir / f"{path.stem}.png")
+            # PNG compression level changes storage time/size only; decoded
+            # restoration pixels are identical. A low level keeps large,
+            # restartable candidate-cache runs from becoming CPU-bound.
+            TF.to_pil_image(restored[0].detach().cpu()).save(
+                out_image_dir / f"{path.stem}.png",
+                compress_level=1,
+            )
             label_path = label_dir / path.with_suffix(".txt").name
             if label_path.exists():
                 shutil.copy2(label_path, out_label_dir / label_path.name)

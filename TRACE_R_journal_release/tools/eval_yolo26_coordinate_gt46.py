@@ -1,4 +1,3 @@
-# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from __future__ import annotations
 
 """Evaluate Yolo26_coordinate.py outputs on revised GT46 COCO annotations.

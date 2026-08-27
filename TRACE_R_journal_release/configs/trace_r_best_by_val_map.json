@@ -1,0 +1,29 @@
+{
+  "status": "complete",
+  "criterion": "maximum joint mean validation mAP50; lower epoch breaks ties",
+  "test_split_used": false,
+  "best_by_val_map50": {
+    "rmrp": {
+      "model": "rmrp",
+      "epoch": 8,
+      "checkpoint": "E:\\TRACE_R_experiments\\matched_budget_trace_v53_20260827\\train\\rmrp_epoch_008.pth",
+      "ivcnz_mean_map50": 0.5205476316663247,
+      "pcm_mean_map50": 0.2843761035774808,
+      "joint_mean_map50": 0.4024618676219027,
+      "stage": "full_validation",
+      "test_split_used": false,
+      "rmrp_output_stage": "restored",
+      "rmrp_prompt_router": "checkpoint_default",
+      "rmrp_prompt_delta_scale_override": null,
+      "rmrp_sensor_route_mode": "checkpoint_default",
+      "rmrp_compound_motion_blend": null,
+      "rmrp_demoe_route_acceptance": "checkpoint_default",
+      "rmrp_backbone_route_mode": "checkpoint_default",
+      "rmrp_semantic_adapter_gain": null,
+      "rmrp_semantic_adapter_acceptance": "checkpoint_default",
+      "rmrp_compound_metadata_acceptance": null
+    }
+  },
+  "residual_policy_source": "skipped",
+  "restored_validation_images_retained": false
+}

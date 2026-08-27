@@ -1,4 +1,3 @@
-# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from __future__ import annotations
 
 from pathlib import Path
@@ -72,6 +71,8 @@ class PairedRoadRestorationDataset(Dataset):
         )
         self.defect_crop_probability = float(defect_crop_probability)
         self.max_detector_boxes = int(max_detector_boxes)
+        if self.patch_size < 0:
+            raise ValueError("patch_size must be non-negative; use 0 for full frames")
         if not 0.0 <= self.horizontal_flip_probability <= 1.0:
             raise ValueError("horizontal_flip_probability must be in [0, 1]")
         if not 0.0 <= self.defect_crop_probability <= 1.0:
@@ -166,6 +167,8 @@ class PairedRoadRestorationDataset(Dataset):
         detector_boxes: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         _, height, width = input_tensor.shape
+        if self.patch_size == 0:
+            return input_tensor, gt_tensor, detector_boxes
         if height < self.patch_size or width < self.patch_size:
             scale = self.patch_size / min(height, width)
             new_size = (round(height * scale), round(width * scale))
@@ -245,6 +248,8 @@ class PairedRoadRestorationDataset(Dataset):
     def _pad_detector_targets(
         self,
         boxes: torch.Tensor,
+        height: int,
+        width: int,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Convert cropped ``class, xyxy`` boxes to padded normalized YOLO targets."""
 
@@ -264,7 +269,6 @@ class PairedRoadRestorationDataset(Dataset):
         if boxes.numel() == 0:
             return classes, normalized, valid
 
-        size = float(self.patch_size)
         box_width = (boxes[:, 3] - boxes[:, 1]).clamp_min(0.0)
         box_height = (boxes[:, 4] - boxes[:, 2]).clamp_min(0.0)
         area = box_width * box_height
@@ -273,10 +277,10 @@ class PairedRoadRestorationDataset(Dataset):
         count = boxes.shape[0]
 
         classes[:count] = boxes[:, 0].to(torch.long)
-        normalized[:count, 0] = 0.5 * (boxes[:, 1] + boxes[:, 3]) / size
-        normalized[:count, 1] = 0.5 * (boxes[:, 2] + boxes[:, 4]) / size
-        normalized[:count, 2] = (boxes[:, 3] - boxes[:, 1]) / size
-        normalized[:count, 3] = (boxes[:, 4] - boxes[:, 2]) / size
+        normalized[:count, 0] = 0.5 * (boxes[:, 1] + boxes[:, 3]) / float(width)
+        normalized[:count, 1] = 0.5 * (boxes[:, 2] + boxes[:, 4]) / float(height)
+        normalized[:count, 2] = (boxes[:, 3] - boxes[:, 1]) / float(width)
+        normalized[:count, 3] = (boxes[:, 4] - boxes[:, 2]) / float(height)
         normalized[:count] = normalized[:count].clamp(0.0, 1.0)
         valid[:count] = True
         return classes, normalized, valid
@@ -313,11 +317,15 @@ class PairedRoadRestorationDataset(Dataset):
                 detector_boxes = detector_boxes.clone()
                 old_x1 = detector_boxes[:, 1].clone()
                 old_x2 = detector_boxes[:, 3].clone()
-                detector_boxes[:, 1] = float(self.patch_size) - old_x2
-                detector_boxes[:, 3] = float(self.patch_size) - old_x1
+                detector_boxes[:, 1] = float(input_tensor.shape[-1]) - old_x2
+                detector_boxes[:, 3] = float(input_tensor.shape[-1]) - old_x1
 
         detector_classes, detector_bboxes, detector_valid = (
-            self._pad_detector_targets(detector_boxes)
+            self._pad_detector_targets(
+                detector_boxes,
+                input_tensor.shape[-2],
+                input_tensor.shape[-1],
+            )
         )
 
         scenario_code = code_from_scenario(scenario)

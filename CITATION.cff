@@ -1,11 +1,11 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite the TRACE-R paper, the RMR-P precursor, and this repository."
-title: "TRACE-R: Telemetry-Routed Adaptive Corruption-Expert Restoration for Pavement Inspection"
+message: "If you use this software, please cite the TRACE-R manuscript, the arXiv precursor, and this repository."
+title: "TRACE-R: Telemetry-Conditioned Restoration for Road-Defect Detection"
 type: software
 authors:
   - family-names: Ghorbani
     given-names: Amir
     email: amir.ghorbani@rmit.edu.au
 repository-code: "https://github.com/AmirNetwork/rmrnet-restoration"
-version: 3.0.0
-date-released: 2026-08-24
+version: 4.0.0
+date-released: 2026-08-28

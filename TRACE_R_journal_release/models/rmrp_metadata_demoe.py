@@ -1,5 +1,4 @@
-# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
-"""Metadata-routed DeMoE backbone for RMR-P.
+"""Checkpoint-compatible metadata-routed DeMoE base used by TRACE-R.
 
 This module keeps the released DeMoE image-restoration function and adds a
 small, observable-sensor controller.  Camera, IMU, and vehicle measurements
@@ -107,7 +106,7 @@ class MetadataResidualAdapter(nn.Module):
 
 
 class RMRPMetadataDeMoE(nn.Module):
-    """Road Metadata-aware Restoration for Pavement Inspection.
+    """Checkpoint-compatible metadata-aware DeMoE controller for TRACE-R.
 
     For image state ``z_I``, sensor state ``z_M``, and coordinate reliability
     ``q_M``, the deployed corruption state is
@@ -141,7 +140,8 @@ class RMRPMetadataDeMoE(nn.Module):
         backbone_route_mode: str = "metadata",
         use_semantic_adapters: bool = False,
         semantic_adapter_gain: float = 0.25,
-        sensor_task_thresholds: tuple[float, float, float] = (0.18, 0.10, 0.385),
+        sensor_task_thresholds: tuple[float, float, float] = (0.18, 0.20, 0.385),
+        sensor_task_mixed_expert: int | None = None,
         semantic_adapter_acceptance: tuple[float, float, float, float] = (
             1.0,
             1.0,
@@ -151,7 +151,7 @@ class RMRPMetadataDeMoE(nn.Module):
     ) -> None:
         super().__init__()
         if top_k not in {1, 2}:
-            raise ValueError("RMR-P DeMoE top_k must be 1 or 2")
+            raise ValueError("TRACE-R DeMoE top_k must be 1 or 2")
         self.backbone = backbone
         self.sensor_dim = PRACTICAL_SENSOR_DIM
         self.use_practical_sensor_encoder = True
@@ -180,6 +180,12 @@ class RMRPMetadataDeMoE(nn.Module):
         self.sensor_task_thresholds = tuple(float(value) for value in sensor_task_thresholds)
         if any(value < 0.0 or value > 1.0 for value in self.sensor_task_thresholds):
             raise ValueError("sensor_task_thresholds values must be in [0, 1]")
+        if sensor_task_mixed_expert is not None and not 0 <= sensor_task_mixed_expert <= 4:
+            raise ValueError("sensor_task_mixed_expert must be None or an expert index in [0, 4]")
+        # None preserves the historical matched-DeMoE route (mixed -> low light).
+        # New checkpoints may reserve one internal restoration expert for a
+        # compound cause without combining downstream detector outputs.
+        self.sensor_task_mixed_expert = sensor_task_mixed_expert
         self.use_semantic_adapters = bool(use_semantic_adapters)
         self.semantic_adapter_gain = float(semantic_adapter_gain)
         self.set_semantic_adapter_acceptance(semantic_adapter_acceptance)
@@ -423,7 +429,7 @@ class RMRPMetadataDeMoE(nn.Module):
         """Map clean/motion/defocus/noise/low-light/compound to DeMoE."""
 
         if teacher.shape[1] != 6:
-            raise ValueError("RMR-P route teacher must have six cause columns")
+            raise ValueError("TRACE-R route teacher must have six cause columns")
         motion = teacher[:, 1] + 0.5 * teacher[:, 5]
         defocus = teacher[:, 2]
         lowlight = teacher[:, 4] + 0.5 * teacher[:, 5]
@@ -515,7 +521,7 @@ class RMRPMetadataDeMoE(nn.Module):
         """Select DeMoE's declared task expert from observable measurements.
 
         The matched DeMoE control receives a declared restoration task and uses
-        one of five one-hot experts. RMR-P does not receive the benchmark
+        one of five one-hot experts. TRACE-R does not receive the benchmark
         scenario string. Instead, this route derives the same task decision
         from exposure-synchronized motion, focus, and low-light measurements:
 
@@ -524,9 +530,9 @@ class RMRPMetadataDeMoE(nn.Module):
         The three thresholds are selected on training/validation metadata and
         stored in the checkpoint. If the corresponding modality is unavailable
         or no measured cause exceeds its threshold, DeMoE's image router is
-        retained. Mixed motion/low-light measurements select the low-light
-        expert, matching the declared DeMoE scenario protocol; the compound
-        evidence remains available to RMR-P's bounded residual specialist.
+        retained. Historical checkpoints map mixed motion/low-light evidence
+        to the low-light expert. New checkpoints may nominate a dedicated
+        internal restoration expert through ``sensor_task_mixed_expert``.
         """
 
         motion_threshold, defocus_threshold, lowlight_threshold = (
@@ -535,13 +541,20 @@ class RMRPMetadataDeMoE(nn.Module):
         motion = sensor_direct[:, :3].amax(dim=1)
         defocus = sensor_direct[:, 3]
         lowlight = sensor_direct[:, 5]
-        motion_supported = cause_reliability[:, :3].amax(dim=1) >= 0.5
-        defocus_supported = cause_reliability[:, 3] >= 0.5
-        lowlight_supported = cause_reliability[:, 5] >= 0.5
+        # Availability and confidence are different quantities. A low
+        # autofocus-confidence reading is itself common during defocus and
+        # must not erase a directly measured focus-error value. Any non-zero
+        # modality reliability therefore makes the measurement eligible for
+        # the discrete task nomination; its continuous reliability still
+        # controls the posterior and bounded residual correction downstream.
+        motion_supported = cause_reliability[:, :3].amax(dim=1) > 1e-6
+        defocus_supported = cause_reliability[:, 3] > 1e-6
+        lowlight_supported = cause_reliability[:, 5] > 1e-6
 
         motion_active = motion_supported & (motion >= motion_threshold)
         defocus_active = defocus_supported & (defocus >= defocus_threshold)
         lowlight_active = lowlight_supported & (lowlight >= lowlight_threshold)
+        mixed_active = motion_active & lowlight_active
 
         # DeMoE expert order: defocus, real global motion, local motion,
         # synthetic/global motion, and low light. Priority reproduces the
@@ -549,32 +562,63 @@ class RMRPMetadataDeMoE(nn.Module):
         task_index = torch.full_like(motion, -1, dtype=torch.long)
         task_index = torch.where(motion_active, torch.full_like(task_index, 3), task_index)
         task_index = torch.where(lowlight_active, torch.full_like(task_index, 4), task_index)
+        if self.sensor_task_mixed_expert is not None:
+            task_index = torch.where(
+                mixed_active,
+                torch.full_like(task_index, self.sensor_task_mixed_expert),
+                task_index,
+            )
         task_index = torch.where(defocus_active, torch.zeros_like(task_index), task_index)
         available = task_index >= 0
         one_hot = F.one_hot(task_index.clamp_min(0), num_classes=5).to(auto_weights.dtype)
         return torch.where(available[:, None], one_hot, auto_weights)
 
-    @staticmethod
     def _teacher_to_sensor_task_experts(
+        self,
         teacher: torch.Tensor,
         auto_weights: torch.Tensor,
     ) -> torch.Tensor:
         """Map training-only cause targets to the declared DeMoE task route."""
 
         if teacher.shape[1] != 6:
-            raise ValueError("RMR-P route teacher must have six cause columns")
+            raise ValueError("TRACE-R route teacher must have six cause columns")
         motion = teacher[:, 1] > 0.5
         defocus = teacher[:, 2] > 0.5
         lowlight = (teacher[:, 4] > 0.5) | (teacher[:, 5] > 0.5)
+        mixed = motion & lowlight
         task_index = torch.full(
             (teacher.shape[0],), -1, device=teacher.device, dtype=torch.long
         )
         task_index = torch.where(motion, torch.full_like(task_index, 3), task_index)
         task_index = torch.where(lowlight, torch.full_like(task_index, 4), task_index)
+        if self.sensor_task_mixed_expert is not None:
+            task_index = torch.where(
+                mixed,
+                torch.full_like(task_index, self.sensor_task_mixed_expert),
+                task_index,
+            )
         task_index = torch.where(defocus, torch.zeros_like(task_index), task_index)
         available = task_index >= 0
         one_hot = F.one_hot(task_index.clamp_min(0), num_classes=5).to(auto_weights.dtype)
         return torch.where(available[:, None], one_hot, auto_weights)
+
+    def _adapt_backbone_feature(
+        self,
+        stage: str,
+        feature: torch.Tensor,
+        conditioning: torch.Tensor,
+        cause_reliability: torch.Tensor,
+    ) -> torch.Tensor:
+        """Optional checkpoint-compatible feature adaptation hook.
+
+        The released metadata router leaves DeMoE features unchanged. TRACE-R
+        subclasses override this hook to inject the joint image--sensor state
+        inside the restoration hierarchy. Keeping the default as an exact
+        identity preserves every historical checkpoint and inference result.
+        """
+
+        del stage, conditioning, cause_reliability
+        return feature
 
     def _backbone_forward(
         self,
@@ -593,10 +637,18 @@ class RMRPMetadataDeMoE(nn.Module):
         batch, _, height, width = image.shape
         padded = self.backbone.check_image_size(image)
         x = self.backbone.intro(padded)
+        conditioning = torch.cat(
+            [image_code, sensor_code, disagreement, cause_reliability], dim=1
+        )
         encodings = []
         bins = []
-        for encoder, down in zip(self.backbone.encoders, self.backbone.downs):
+        for stage_index, (encoder, down) in enumerate(
+            zip(self.backbone.encoders, self.backbone.downs)
+        ):
             x = encoder(x)
+            x = self._adapt_backbone_feature(
+                f"encoder_{stage_index}", x, conditioning, cause_reliability
+            )
             encodings.append(x)
             x = down(x)
 
@@ -649,17 +701,25 @@ class RMRPMetadataDeMoE(nn.Module):
 
         x = self.backbone.middle_blks(x)
         x, expert_bins, _ = self.backbone.experts[0](x, expert_weights)
+        x = self._adapt_backbone_feature(
+            "bottleneck", x, conditioning, cause_reliability
+        )
         bins.append(expert_bins)
-        for decoder, up, skip, expert in zip(
-            self.backbone.decoders,
-            self.backbone.ups,
-            encodings[::-1],
-            self.backbone.experts[1:],
+        for stage_index, (decoder, up, skip, expert) in enumerate(
+            zip(
+                self.backbone.decoders,
+                self.backbone.ups,
+                encodings[::-1],
+                self.backbone.experts[1:],
+            )
         ):
             x = up(x)
             x = x + skip
             x = decoder(x)
             x, expert_bins, _ = expert(x, expert_weights)
+            x = self._adapt_backbone_feature(
+                f"decoder_{stage_index}", x, conditioning, cause_reliability
+            )
             bins.append(expert_bins)
         restored = self.backbone.ending(x) + padded
         restored = restored[:, :, :height, :width].clamp(0.0, 1.0)
@@ -992,6 +1052,10 @@ class RMRPMetadataDeMoE(nn.Module):
             "sensor_task_thresholds": image.new_tensor(
                 self.sensor_task_thresholds
             ).unsqueeze(0).expand(image.shape[0], -1),
+            "sensor_task_mixed_expert": image.new_full(
+                (image.shape[0],),
+                -1 if self.sensor_task_mixed_expert is None else self.sensor_task_mixed_expert,
+            ),
             "semantic_adapters_enabled": image.new_full(
                 (image.shape[0],), float(self.use_semantic_adapters)
             ),

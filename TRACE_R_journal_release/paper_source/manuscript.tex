@@ -1,0 +1,316 @@
+\documentclass[journal]{IEEEtran}
+
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{cite}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{xspace}
+\usepackage[hidelinks]{hyperref}
+
+\graphicspath{{figures/}}
+\hypersetup{
+  pdfauthor={Amir Ghorbani},
+  pdftitle={TRACE-R: Telemetry-Conditioned Restoration for Road-Defect Detection},
+  bookmarksnumbered=true,
+  breaklinks=true
+}
+\newcommand{\tracer}{TRACE-R\xspace}
+\newcommand{\mapfifty}{mAP50\xspace}
+\newcommand{\crid}{CRID\xspace}
+\newcommand{\vect}[1]{\boldsymbol{#1}}
+
+\begin{document}
+
+\title{TRACE-R: Telemetry-Conditioned Restoration for Road-Defect Detection}
+
+\author{Amir~Ghorbani%
+\thanks{Amir Ghorbani is with the School of Engineering, RMIT University, Melbourne, VIC, Australia (e-mail: amir.ghorbani@rmit.edu.au).}%
+\thanks{Code, configurations, and frozen evaluation protocols are available at \url{https://github.com/AmirNetwork/rmrnet-restoration/tree/trace-r-journal/TRACE_R_journal_release}.}}
+
+\maketitle
+
+\begin{abstract}
+Road-inspection vehicles record camera settings, inertial motion, and vehicle state, yet restoration networks usually infer image corruption from pixels alone. This paper presents TRACE-R, a telemetry-conditioned restoration front end for road-defect detection. An exposure-centred capture packet is converted into physically interpretable corruption evidence and fused with an image estimate according to sensor availability and reliability. The resulting state selects an internal restoration route and conditions lightweight spatial adapters throughout a shared backbone. The model always returns one image and requires no degradation label or detector-output fusion. Under matched training and validation-only selection, TRACE-R is the strongest deployable method on two controlled road-damage benchmarks and on a native-resolution field sequence with synchronized camera and inertial records. Missing and deliberately inconsistent packet interventions reduce accuracy, confirming that the gain depends on measured capture information rather than additional network capacity alone.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Image restoration, inertial sensing, multimodal perception, pavement inspection, road-defect detection.
+\end{IEEEkeywords}
+
+\section{Introduction}
+\IEEEPARstart{V}{ehicle-mounted} cameras can inspect long road corridors without placing personnel in traffic. Their usefulness, however, depends on the evidence delivered to the detector. Motion during exposure spreads narrow cracks over neighbouring pixels, defocus weakens pothole rims, and low illumination couples longer exposure with sensor noise. These effects can coexist, and an enhancement that looks pleasing can still remove the texture needed for recognition.
+
+Road-damage research has accordingly improved detector scale, domain adaptation, and shape representation~\cite{arya2022rdd2022,lin2023dardd,li2024yoloxrdd,zhang2024shapeadaptation}. Shadow-robust recognition and topology-aware crack analysis further address difficult pavement appearance~\cite{kong2025shadowrobust,jing2025topologycrack}. These advances generally assume that the detector receives a usable image. All-in-one restoration provides a possible front end, but an image alone may not identify why evidence was lost. A soft patch may result from camera rotation, focus error, or weak illumination, each requiring a different correction.
+
+Inspection platforms already expose useful acquisition measurements. Exposure, gain, focus state, angular rate, acceleration, vehicle speed, timing uncertainty, and sensor quality are available before a road-defect label exists. Inertial deblurring has shown that such measurements can constrain motion recovery~\cite{joshi2010imu,hu2016smartphoneimu,yang2025gyro}. A practical road system nevertheless needs more than inertial deconvolution: it must cover several corruption families, accept partial sensor packets, retain an image-only fallback, and preserve detector-relevant structure.
+
+This paper introduces \tracer, a single-output restorer built around those requirements. It combines a shared DeMoE restoration backbone with (i) an observable camera--IMU--vehicle packet, (ii) a physically initialized and reliability-aware corruption state, and (iii) nine identity-initialized, sensor-conditioned low-rank adapters distributed through the encoder, bottleneck, and decoder. The detector is used only to shape training and to evaluate the returned image; its boxes are not merged across views. This distinction is important: the contribution is a restoration model whose internal computation is conditioned by measured capture state, not an ensemble of restoration or detection outputs.
+
+The contributions are as follows.
+\begin{itemize}
+  \item We define an 82-value exposure-centred packet whose fields map directly to camera, IMU, and vehicle records. Independent availability and continuous reliability variables allow partial packets rather than a binary metadata mode.
+  \item We introduce a joint image--sensor state and hierarchy-wide low-rank adaptation mechanism. Physical initialization makes the sensor path interpretable, while learned bounded residuals accommodate calibration error.
+  \item We train restoration, detector-feature preservation, detector supervision, and state calibration together under a compact objective. Matched baselines use the same data, crop stream, update budget, and frozen detectors.
+  \item We report validation-only packet interventions, one-time controlled tests on IVCNZ and PCM, and a native-resolution field evaluation using synchronized Sony ILX-LR1 and SBG records. Every reported method produces one image and uses the same detector within each dataset.
+\end{itemize}
+
+An earlier arXiv study, RMR-P~\cite{ghorbani2026rmrp}, explored metadata conditioning in a different encoder--decoder. \tracer replaces that formulation with a shared DeMoE backbone, an observable partial-modality packet, physically initialized state estimation, and feature adaptation at nine network depths. The name and architecture are changed to make the present method and evidence distinct.
+
+\section{Related Work}
+Automated road inspection has progressed from mobile image classification and detection~\cite{maeda2018road} to geographically diverse benchmarks such as RDD2022~\cite{arya2022rdd2022}. Recent transportation research addresses cross-country domain shift~\cite{lin2023dardd}, small and rare defects~\cite{su2022fsrdd}, front-view road damage~\cite{li2024yoloxrdd}, and deformation of the detector representation to irregular defect shape~\cite{zhang2024shapeadaptation}. Image quality remains a separate source of error. Shadow-aware synthesis and detection can reduce one nuisance~\cite{kong2025shadowrobust}, but do not supply a general restoration mechanism for motion, focus, noise, and illumination.
+
+Modern image restoration has moved from degradation-specific networks to shared models. NAFNet provides a strong, simple restoration baseline~\cite{chen2022nafnet}; InstructIR uses a natural-language instruction to specify the requested correction~\cite{conde2024instructir}; DFPIR perturbs features according to estimated degradation~\cite{tian2025dfpir}; and DeMoE uses a mixture-of-experts decoder for unified deblurring~\cite{feijoo2025demoe}. These models are relevant comparators because they represent image-only, instruction-conditioned, degradation-aware, and mixture-routed restoration. InstructIR's instruction and an oracle DeMoE condition are useful upper-bound controls, but neither is a deployable substitute for measurements when the degradation label is unknown.
+
+Task-aware restoration recognizes that fidelity and recognition are not equivalent. TogetherNet couples enhancement and detection~\cite{wang2022togethernet}, while recognition-driven restoration aligns recovered content with semantic features~\cite{yang2023vrdir}. Detector guidance alone can, however, reward fragile high-frequency changes. \tracer therefore retains a dominant robust image term and uses frozen detector features and detector supervision as bounded auxiliary signals.
+
+Telemetry offers complementary evidence. Classical and neural methods use gyroscopes or inertial trajectories to constrain deblurring~\cite{joshi2010imu,hu2016smartphoneimu,yang2025gyro}. Their central insight is that motion measured during exposure narrows an otherwise ill-posed inverse problem. \tracer extends this principle to partial, heterogeneous capture records and multiple corruption causes. Unlike output-level ensembles, it uses telemetry inside one restoration network: the image remains the main signal, and measured state modifies only supported internal routes and residual adapters.
+
+\section{TRACE-R Method}
+\subsection{Problem and Notation}
+Let $I_d\in[0,1]^{3\times H\times W}$ be a degraded road image, $I_c$ its clean training target when available, and $m\in\mathbb{R}^{82}$ an exposure-centred capture packet. The deployed mapping is
+\begin{equation}
+I_r=f_\theta(I_d,m),
+\label{eq:system}
+\end{equation}
+where $I_r$ is the only image passed to the road-defect detector. A missing packet is represented by zeroed measurement groups and explicit availability fields; it does not invoke a separate model. Table~\ref{tab:notation} defines the main symbols.
+
+\begin{table}[!t]
+\centering
+\caption{Principal notation.}
+\label{tab:notation}
+\scriptsize
+\begin{tabular}{ll}
+\toprule
+Symbol & Meaning \\
+\midrule
+$I_d,I_c,I_r$ & degraded, clean target, restored image \\
+$m$ & normalized 82-value capture packet \\
+$z_I,z_m$ & image and sensor corruption codes \\
+$q$ & cause-wise sensor reliability \\
+$s$ & joint image--sensor state \\
+$x_l,x'_l$ & original and adapted feature at depth $l$ \\
+$Q_l,P_l,D_l$ & low-rank down/up projections and spatial operator \\
+$\Phi_k$ & frozen detector feature at layer $k$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Figure~\ref{fig:architecture} summarizes the inference path. The degraded image always enters the shared restorer. Telemetry changes the internal route and bounded feature corrections; it never replaces image evidence.
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=0.98\textwidth]{fig_trace_architecture.pdf}
+  \caption{TRACE-R inference. An image estimate and an observable capture packet form a reliability-aware state. That state selects one internal DeMoE route and conditions nine low-rank spatial adapters. The system returns one restored image; detector predictions from different views are never fused.}
+  \label{fig:architecture}
+\end{figure*}
+
+\subsection{Observable Capture Packet}
+The packet contains eleven three-axis gyroscope samples and eleven three-axis accelerometer samples centred on the exposure. The remaining 16 fields are normalized log exposure, log ISO, analog gain, focal length, aperture, focus-error proxy, autofocus confidence, rolling readout, vehicle speed, vehicle yaw rate, timestamp offset, IMU noise, camera reliability, IMU reliability, vehicle reliability, and global availability. Thus $33+33+16=82$.
+
+Camera, IMU, and vehicle groups have independent masks $a_C,a_I,a_V\in\{0,1\}$. Their reliabilities remain continuous. If the IMU is unavailable, for example, only its 66 trajectory values, timing/noise fields, and reliability are removed; exposure and lens settings can still inform focus or low-light correction. Appendix~\ref{app:packet} gives the exact order and normalization.
+
+The packet has the same semantics in controlled and field data. For IVCNZ and PCM, the renderer records virtual exposure, camera motion, focus, gain, and reliability values for each generated image; hidden kernels and scenario names are not given to the model. For the field data, image settings come from Sony EXIF and the eleven motion samples are extracted from the synchronized 200-Hz SBG record. Consequently, ``per-image metadata'' means a measurement window associated with one exposure, not a class label for its corruption.
+
+\subsection{Joint Image--Sensor State}
+An image encoder estimates an eight-coordinate code $z_I=g_I(I_d)$. Its coordinates represent two axial motion components, motion/vibration magnitude, focus error, noise, low illumination, compression, and overall severity. A deterministic map $h_{\rm phy}$ initializes the sensor estimate. In particular, exposure-time rotation is obtained from
+\begin{equation}
+\Delta\vartheta=T_{\rm exp}\int_{t_0}^{t_1}\omega(t)\,dt,
+\label{eq:motion}
+\end{equation}
+and its image-plane magnitude and axial direction populate the motion coordinates. Exposure and ISO initialize low-light evidence; focus state initializes defocus evidence; acceleration variation contributes to vibration. Compression remains image-estimated because the released packet has no direct compression measurement.
+
+The sensor encoder contains temporal branches for the IMU trajectories and compact branches for camera, vehicle, and quality fields. It predicts a bounded calibration residual around the physical code:
+\begin{equation}
+z_m=\operatorname{clip}\!\left(h_{\rm phy}(m)+r_g\,\epsilon\tanh \Delta h_\psi(m),0,1\right),
+\label{eq:sensorcode}
+\end{equation}
+where $r_g$ is global packet reliability and $\epsilon$ bounds calibration. The residual is zero-initialized, so an untrained sensor path equals the direct physical map.
+
+Cause-wise reliability $q\in[0,1]^8$ depends on field availability, timestamp alignment, measurement noise, autofocus confidence, and sensor quality. The posterior is
+\begin{equation}
+\begin{split}
+z_0 &= q\odot z_m+(1-q)\odot z_I,\\
+z &= \operatorname{clip}\!\left(z_0+\epsilon_p\tanh P_\psi[z_I,z_m,|z_m-z_I|],0,1\right).
+\end{split}
+\label{eq:posterior}
+\end{equation}
+When a cause has no sensor support, its coordinate falls back to the image estimate. The 32-value joint state used by the adapters is
+\begin{equation}
+s=[z_I,z_m,|z_m-z_I|,q].
+\label{eq:jointstate}
+\end{equation}
+This design gives disagreement an explicit meaning: it indicates where appearance and capture evidence do not agree, rather than asking a network to interpret a blindly concatenated metadata vector.
+
+\subsection{Shared Restoration Backbone and Adapters}
+The restoration backbone is DeMoE~\cite{feijoo2025demoe}. A thresholded view of supported motion, defocus, and low-light coordinates selects one internal expert route. Thresholds are selected on validation data and the image router remains the fallback when support is weak. No benchmark scenario label is an inference input.
+
+Routing alone changes a discrete internal path but cannot correct features at every scale. We therefore place adapters after four encoder stages, the bottleneck, and four decoder stages. At depth $l$,
+\begin{equation}
+x'_l=x_l+a_l(s,q)P_l\,\sigma\!\left(D_l(Q_l\mathcal{N}(x_l);s)\right),
+\label{eq:adapter}
+\end{equation}
+where $Q_l$ and $P_l$ are low-rank $1\times1$ projections, $D_l$ is a depthwise spatial operator with local and dilated kernels, and $\mathcal{N}$ is group normalization. State-dependent affine parameters modulate the rank-reduced features. The compatibility gate is
+\begin{equation}
+a_l(s,q)=\eta_l\,\sigma(w_l^\top s+b_l)\left(0.25+0.75\max_j q_j\right),
+\label{eq:adaptergate}
+\end{equation}
+with a learned spatial gate applied inside $D_l$. The final projection $P_l$ is initialized to zero. The wrapped backbone is therefore exactly function preserving before adaptation, and missing telemetry retains a bounded image-conditioned quarter-gain path rather than disabling the model.
+
+\subsection{Training Objective}
+The accepted objective deliberately avoids a long collection of weak regularizers. Its fidelity term is
+\begin{equation}
+\mathcal{L}_{\rm fid}=\frac{1}{N}\sum_i\sqrt{(I_r^i-I_c^i)^2+\varepsilon^2}
++\lambda_g\|\nabla I_r-\nabla I_c\|_1.
+\label{eq:fidelity}
+\end{equation}
+The Charbonnier term is robust to a small number of imperfect crops; the gradient term protects narrow cracks and pothole rims.
+
+A frozen dataset-specific detector supplies two complementary training signals. Task-driven perceptual loss matches normalized intermediate features,
+\begin{equation}
+\mathcal{L}_{\rm TDP}=\sum_{k\in\mathcal{K}}\alpha_k
+\|\widehat{\Phi}_k(I_r)-\operatorname{sg}(\widehat{\Phi}_k(I_c))\|_2^2,
+\label{eq:tdp}
+\end{equation}
+where $\operatorname{sg}$ stops gradients through the clean branch. A supervised detector loss $\mathcal{L}_{\rm det}$ applies the frozen classification, box, and distribution-focal objectives to restored defect crops. Detector parameters never update through either term.
+
+The image, sensor, and joint codes are calibrated with smooth-$L_1$ cause loss $\mathcal{L}_{\rm state}$. A separate available-coordinate term $\mathcal{L}_{\rm phy}$ keeps the learned sensor residual near the observable physical target. The complete objective is
+\begin{equation}
+\mathcal{L}=\mathcal{L}_{\rm fid}
++\lambda_t\mathcal{L}_{\rm TDP}
++\lambda_d\mathcal{L}_{\rm det}
++\lambda_s\mathcal{L}_{\rm state}
++\lambda_p\mathcal{L}_{\rm phy}.
+\label{eq:objective}
+\end{equation}
+All terms enter the same backward pass. Training independently drops camera, IMU, and vehicle groups, perturbs available measurements, and supplies occasional counterfactual packets. These interventions teach both graceful fallback and rejection of inconsistent telemetry. The frozen values and optimization schedule are reported in Appendix~\ref{app:training}.
+
+\section{Experimental Protocol}
+\subsection{Controlled Road-Damage Benchmarks}
+IVCNZ contains pothole imagery; PCM contains pothole, crack, and manhole annotations~\cite{giordani2025roadpcm}. Source and temporal groups are separated before rendering. The training partitions contain 731 IVCNZ and 1,402 PCM source images, and the validation partitions contain 146 and 353 source images. Four per-image corruption families are rendered: motion, defocus, low light, and compound motion--low light. Each sidecar stores only observable virtual camera/IMU measurements. Test identities remain inaccessible until the validation-selected checkpoint and all comparator policies are frozen.
+
+The detector is YOLO11s~\cite{ultralytics2023yolo}, trained on the clean training split for each dataset and then frozen. Detection is evaluated on restored images with COCO-style mAP50 and mAP50--95. Clean-test detector accuracy is 0.424 mAP50 on IVCNZ and 0.334 on PCM, providing an upper reference for the corruption study. Paired fidelity is measured by PSNR and SSIM.
+
+\subsection{Comparators and Matched Adaptation}
+The comparison includes NAFNet~\cite{chen2022nafnet}, a FiLM-conditioned NAFNet~\cite{perez2018film}, InstructIR~\cite{conde2024instructir}, DFPIR~\cite{tian2025dfpir}, and DeMoE~\cite{feijoo2025demoe}. Every trainable method receives the same controlled training sources, balanced defect-crop stream, 32 continuation epochs, 4096 optimizer updates, and frozen dataset-specific detectors. Only input information differs. NAFNet, DFPIR, and DeMoE-auto are image-only; FiLM-NAFNet receives the same packet; InstructIR receives the controlled condition instruction. DeMoE-oracle receives the benchmark condition label and is reported only as a non-deployable upper bound. No row combines outputs from different restorers or detectors.
+
+Checkpoint and hyperparameter selection use mean validation mAP50 across IVCNZ and PCM. Once the policies are frozen, the controlled test is executed once. The exact hashes and commands are retained in the release.
+
+\subsection{CRID Native-Resolution Field Study}
+The Collingwood Road Inspection Dataset (CRID) contains 4,134 native 4752$\times$3168 Sony ILX-LR1 frames acquired from a survey vehicle with synchronized SBG navigation and inertial records. A 46-frame subset has manually checked road-defect boxes. No synthetic degradation is added. The current experiment uses an earlier 12-frame temporal block to select the residual strength and a later 13-frame block containing 49 annotated defects for evaluation. All images remain in native coordinates.
+
+The frozen field detector uses the YOLO26 family~\cite{jocher2026yolo26} initialized from the public road-damage checkpoint~\cite{tamako2026yolo26rddfrdc}. The same checkpoint, resizing rule, confidence sweep, and non-maximum suppression are used for native and restored images. AP is reported at IoU 0.10 and 0.50 because thin or fragmented cracks make a single strict box threshold incomplete; the mean of both AP values is the primary summary. GT coverage reports whether each annotated defect has at least one prediction at IoU 0.10, independent of confidence ordering. CRID is a native-image safety and transfer study, not a substitute for a larger geographically independent field benchmark.
+
+\section{Results}
+\subsection{Controlled Detection and Fidelity}
+Table~\ref{tab:controlled_summary} reports the sealed controlled test. \tracer is the strongest deployable method on both datasets and under both AP summaries. Its joint mAP50 is 0.285, compared with 0.269 for DFPIR and 0.258 for DeMoE-auto. The gain is larger on IVCNZ and smaller on PCM, but the ordering is consistent. The oracle route remains 0.009 higher in joint mAP50, indicating that capture-state estimation, rather than backbone capacity, is the remaining gap.
+
+\input{tables/table_controlled_summary}
+
+Figure~\ref{fig:controlled_results} places the sealed result beside the validation-only packet intervention. With identical images and weights, removing the packet reduces joint validation mAP50 from 0.402 to 0.356; a deliberately inconsistent packet reduces it to 0.329. The monotonic ordering supports the intended causal interpretation: aligned measurements help, missing measurements trigger a useful fallback, and contradictory measurements are rejected imperfectly rather than being ignored.
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=0.88\textwidth]{fig_trace_controlled_results.pdf}
+  \caption{Controlled detection and capture-packet intervention. Left: one-time test result using one restored image per method. Right: validation result when only the packet supplied to the frozen TRACE-R model is changed.}
+  \label{fig:controlled_results}
+\end{figure*}
+
+\input{tables/table_metadata_controls}
+
+Fidelity does not have the same ranking as detection. DFPIR has the highest deployable PSNR, while \tracer has the highest deployable SSIM on both datasets (Appendix~\ref{app:detailed}). This difference is expected: the detector benefits from preserved structure even when a more conservative reconstruction has lower pixel error. The result therefore does not claim universal perceptual superiority; it supports task-aware restoration for inspection.
+
+The qualitative examples in Figs.~\ref{fig:ivcnz_qualitative} and~\ref{fig:pcm_qualitative} use a fixed confidence of 0.25 and IoU 0.50. Frames are selected by a predeclared recovery rule recorded in the release: maximize the true-positive advantage of \tracer over the strongest deployable comparator, then minimize false positives. On IVCNZ defocus, \tracer recovers the annotated pothole missed by the deployable baselines. On PCM compound corruption, it recovers both annotated defects without an additional false positive. These panels illustrate, rather than replace, the dataset-level AP result.
+
+\begin{figure*}[!t]
+  \centering
+  \fbox{\includegraphics[width=0.965\textwidth]{fig_trace_ivcnz_qualitative.pdf}}
+  \caption{IVCNZ defocus example at a common display threshold. Yellow boxes are annotations and green boxes are predictions from the same frozen detector. Asterisks denote condition-informed upper-bound inputs.}
+  \label{fig:ivcnz_qualitative}
+\end{figure*}
+
+\begin{figure*}[!t]
+  \centering
+  \fbox{\includegraphics[width=0.965\textwidth]{fig_trace_pcm_qualitative.pdf}}
+  \caption{PCM compound-corruption example under the same visualization protocol. TRACE-R recovers both annotated road defects in this frame.}
+  \label{fig:pcm_qualitative}
+\end{figure*}
+
+\subsection{Native-Resolution CRID Field Result}
+Table~\ref{tab:crid} reports the later CRID temporal block. \tracer obtains the highest AP at both overlap thresholds and the highest mean AP. The absolute mean-AP gain is 0.026 over NAFNet, the strongest comparator in this block. Native-image coverage is retained, while confidence ordering improves. This distinction matters because coverage alone ignores whether true defects are ranked above false alarms.
+
+\input{tables/table_crid}
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=0.98\columnwidth]{fig_trace_crid_ap.pdf}
+  \caption{CRID field AP in native image coordinates. Every method uses the same frozen detector; no synthetic corruption or prediction fusion is used.}
+  \label{fig:crid_ap}
+\end{figure}
+
+\begin{figure*}[!t]
+  \centering
+  \fbox{\includegraphics[width=0.96\textwidth]{fig_trace_crid_qualitative.pdf}}
+  \caption{Representative native-resolution CRID frame. Yellow boxes are annotations and green boxes are predictions at the fixed display threshold. This frame is used to show the character of the outputs; the field claim is based on aggregate AP rather than a single image.}
+  \label{fig:crid_qualitative}
+\end{figure*}
+
+The field gain is supportive rather than definitive. The test block is temporally later than calibration and was executed after freezing the residual strength, but all 46 annotated frames originate from one route, camera, and acquisition session. Confidence intervals from a larger, independently collected release will be needed before inferring network-wide maintenance benefit.
+
+\section{Discussion}
+Three observations are central. First, capture telemetry is useful only when it is tied to image evidence. The unavailable-packet result remains competitive because $z_I$ and the DeMoE image router stay active; the wrong-packet reduction shows that the model has not learned a generic gain from an extra vector. Second, the SSIM--mAP and PSNR--mAP rankings differ. Minimizing pixel error can favour conservative smoothing, whereas detector-aware adaptation preserves defect structure. Third, a single internal route is sufficient. The final model does not obtain its advantage by summing complementary detector outputs or selecting a restorer after seeing test performance.
+
+The physical code should be interpreted as a calibrated prior, not an exact blur kernel. Camera rotation during exposure is directly relevant to image motion, but acceleration, speed, and yaw provide context rather than depth-complete optical flow. Equation~\eqref{eq:posterior} therefore exposes reliability and disagreement to the learned posterior. This also explains why partial packets are useful: reliable exposure and focus fields can contribute when IMU data are absent, while measured angular rate can contribute when lens metadata are unavailable.
+
+The principal limitations are data scale and sensor alignment. Controlled corruption provides paired clean targets and exact observable virtual records, but cannot cover all pavement, weather, lens, and rolling-shutter interactions. CRID provides real camera and inertial measurements, yet the annotated temporal block is small. The method also assumes that timestamps and calibration quality can be summarized by the supplied reliability fields. Large offsets, unmodelled camera--IMU extrinsics, or a detector outside the training domain can still reduce performance. In deployment, native images and capture logs should be retained for audit, restored outputs should be marked as derived data, and low-confidence detections should remain reviewable by an operator.
+
+\section{Conclusion}
+\tracer connects observable camera, inertial, and vehicle measurements to a single restoration network for road-defect detection. A physical sensor map, image fallback, explicit reliability, and image--sensor disagreement form the corruption state. That state controls one internal DeMoE route and nine low-rank spatial adapters. Under matched training and validation-only selection, the method gives the strongest deployable detection result on IVCNZ and PCM and the highest mean AP in the native-resolution CRID field block. Packet interventions confirm that aligned measurements, rather than model capacity alone, account for part of the gain. The remaining oracle gap and limited field scale define the next validation priorities.
+
+\section*{Acknowledgment}
+This work was supported by Australia's National Road Safety Action Grants Program [Grant number: XXXXXX].
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\clearpage
+\appendices
+\section{Capture Packet and State Construction}
+\label{app:packet}
+The 82 packet fields are ordered as follows: eleven $(\omega_x,\omega_y,\omega_z)$ samples, eleven $(a_x,a_y,a_z)$ samples, and the 16 context fields listed in Section III-B. IMU values are normalized to calibrated full scale and remain signed. Camera settings and quality values lie in $[0,1]$; timestamp offset and vehicle yaw rate remain signed. The motion code integrates angular rate over normalized exposure, represents direction axially to respect the $180^\circ$ ambiguity of a line-spread function, and combines gyro and accelerometer variation for vibration. Focus, noise, and low-light coordinates use observable lens, ISO, gain, and exposure values. The eighth coordinate is the maximum supported severity.
+
+Availability is indexed by the three-bit pattern $4a_C+2a_I+a_V$. Each pattern has a small zero-initialized calibration residual, but reliability remains continuous. This separation prevents a camera+IMU packet from being treated as equivalent to camera+vehicle data. Packet noise never alters availability fields, and dropped modalities remain zero after perturbation.
+
+For controlled images, virtual gyroscope trajectories are derived from the sampled camera-motion path during exposure, and the sidecar records the sampled camera settings and uncertainty. The hidden renderer kernel, clean target, benchmark scenario, and detector label are not inference fields. For CRID, packet construction matches image timestamps to the 200-Hz SBG stream, samples an exposure-centred window, and records synchronization uncertainty. EXIF and navigation fields are normalized with training-set statistics saved in the release.
+
+\section{Optimization and Selection Details}
+\label{app:training}
+The accepted run uses 32 continuation epochs, 512 balanced crops per epoch, $128\times128$ patches, effective batch size four, AdamW with initial learning rate $10^{-5}$ and weight decay $10^{-4}$, and 4096 optimizer updates. The low-rank sensor modules use a fivefold learning-rate multiplier. Adapter rank is 24 and maximum adapter gain is 0.35. The route thresholds for motion, defocus, and low light are 0.18, 0.20, and 0.385, selected before the test run.
+
+In Eq.~\eqref{eq:objective}, $(\lambda_g,\lambda_t,\lambda_d,\lambda_s,\lambda_p)=(0.15,0.20,0.10,0.10,0.05)$ and $\varepsilon=10^{-3}$. Detector features are taken from backbone layers \texttt{model.2} and \texttt{model.4}. The detector branch is frozen, and clean features are evaluated without gradient storage. Detector-aware terms warm up for one epoch. Defect-centred crops are sampled with probability 0.6; cross-quality patch mixing is applied to the supervised detector branch with probability 0.25.
+
+Metadata robustness reaches its full setting after a four-epoch curriculum and four-epoch ramp. At full strength, modality dropout is 0.10, Gaussian measurement noise is 0.005 in normalized units, and packet mismatch probability is 0.05. Scenario-label teacher forcing is zero. Validation mAP50 alone selects the checkpoint; the test split does not select checkpoints, route thresholds, residual strength, or display examples.
+
+All six trainable methods complete the same 32-epoch, 4096-update continuation. The release records their complete SHA-256 identities. The selected TRACE-R checkpoint is epoch 8 because it has the highest joint validation mAP50; its hash begins \texttt{a79e2a775e57}. The full run is retained to show that selection did not stop at the first favourable epoch.
+
+\section{Detailed Controlled Results}
+\label{app:detailed}
+Table~\ref{tab:condition_results} shows that no single image-only model dominates every corruption. DFPIR is strongest on several motion and PCM low-light cases; DeMoE-auto is strongest on IVCNZ low light and nearly ties \tracer on IVCNZ compound corruption. \tracer is best on IVCNZ defocus and PCM compound corruption and has the strongest deployable average in Table~\ref{tab:controlled_summary}. The oracle row shows the remaining benefit of perfect condition knowledge and is excluded from deployable ranking.
+
+\input{tables/table_condition_results}
+
+\input{tables/table_fidelity}
+
+Full-reference values are computed after resizing only the clean reference to the stored restoration canvas with Lanczos interpolation. Detection images and labels are unchanged. The PSNR result cautions against treating any single reconstruction metric as proof of inspection utility.
+
+\section{CRID Protocol and Qualitative Selection}
+\label{app:crid}
+CRID restoration preserves the 4752$\times$3168 coordinate system. The selected \tracer output is $I_d+0.5(I_r-I_d)$, with the coefficient fixed on the earlier 12-frame block. The later 13-frame block contains 49 manually checked defects. AP uses a confidence floor of 0.001 and class-aware NMS at IoU 0.70. Every method uses the same frozen detector and exactly one image. No crop mask, detector-box merge, or ground-truth-dependent routing is applied.
+
+The controlled qualitative frames are selected by a frozen rule over the sealed outputs: maximize \tracer's true-positive advantage over the strongest deployable comparator, then its advantage over the comparator mean, then minimize \tracer false positives. Display confidence is 0.25 and matching IoU is 0.50. The CRID panel uses a fixed 0.10 overlap rule suitable for fragmented cracks. The selection manifest stores the image identifiers, thresholds, detector hashes, and per-frame counts. Aggregate AP, not the selected image, is the evidentiary result.
+
+\section{Reproducibility and Governance}
+The release includes source code, normalized packet definitions, dataset builders, training arguments, selected checkpoint hashes, frozen split hashes, test ledgers, table/figure builders, and qualitative-selection manifests. Raw CRID imagery and precise location records require controlled release because street-level images may contain people, vehicle plates, and geolocation. A deployment should retain the native image, packet quality fields, model hash, restored derivative, detector output, and timestamp in one audit record. Failure review should distinguish restoration error, packet synchronization error, detector domain shift, and annotation ambiguity.
+
+\end{document}

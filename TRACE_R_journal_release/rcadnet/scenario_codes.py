@@ -1,4 +1,3 @@
-# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from __future__ import annotations
 
 from dataclasses import dataclass

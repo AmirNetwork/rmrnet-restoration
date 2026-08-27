@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 """Build all-frame CRID practical metadata from the complete SBG INS export.
 
 ``ins_all.txt`` contains the 200 Hz navigation solution, attitude and velocity

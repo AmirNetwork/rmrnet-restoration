@@ -1,0 +1,24 @@
+\begin{table*}[!t]
+\centering
+\caption{Sealed controlled-test detection after validation-only model selection.}
+\label{tab:controlled_summary}
+\scriptsize
+\begin{tabular}{lrrrrrr}
+\toprule
+Method & \multicolumn{2}{c}{IVCNZ} & \multicolumn{2}{c}{PCM} & \multicolumn{2}{c}{Joint} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+ & mAP50 & mAP50--95 & mAP50 & mAP50--95 & mAP50 & mAP50--95 \\
+\midrule
+Degraded input & 0.205 & 0.078 & 0.129 & 0.058 & 0.167 & 0.068 \\
+NAFNet & 0.199 & 0.075 & 0.144 & 0.062 & 0.172 & 0.069 \\
+FiLM-NAFNet & 0.195 & 0.074 & 0.148 & 0.063 & 0.171 & 0.068 \\
+InstructIR* & 0.315 & 0.121 & 0.212 & 0.091 & 0.264 & 0.106 \\
+DFPIR & 0.307 & 0.119 & 0.231 & 0.099 & 0.269 & 0.109 \\
+DeMoE-auto & 0.294 & 0.113 & 0.221 & 0.093 & 0.258 & 0.103 \\
+TRACE-R & \textbf{0.337} & \textbf{0.130} & \textbf{0.233} & \textbf{0.101} & \textbf{0.285} & \textbf{0.115} \\
+\emph{DeMoE-oracle*} & 0.347 & 0.133 & 0.241 & 0.101 & 0.294 & 0.117 \\
+\bottomrule
+\end{tabular}
+\vspace{1mm}
+\parbox{0.97\textwidth}{\scriptsize Bold marks the best deployable method. *InstructIR receives the controlled condition instruction and DeMoE-oracle receives the benchmark condition label; the latter is a non-deployable upper bound. Every row uses one restored image and the same frozen detector, with no prediction fusion.}
+\end{table*}

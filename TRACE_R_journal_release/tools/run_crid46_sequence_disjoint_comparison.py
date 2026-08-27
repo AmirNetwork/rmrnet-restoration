@@ -1,11 +1,10 @@
-# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from __future__ import annotations
 
 """Run the sequence-disjoint CRID-46 detector/restorer comparison.
 
 This evaluator supports a validation-first temporal CRID comparison. Detector,
 metadata, split, and output roots are explicit command-line inputs. It freezes
-the RMR-Net residual strength before the evaluation partition is opened:
+the TRACE-R residual strength before the evaluation partition is opened:
 
 1. Run without ``--run-test`` to evaluate candidate residual strengths on the
    validation sequence and write ``frozen_selection_before_test.json``.
@@ -87,7 +86,7 @@ METADATA_ROOT = (
 
 # I_o = I_d + eta (I_r - I_d), with eta selected on validation only.
 # The fine grid is intentionally one-dimensional: it calibrates the bounded
-# residual already defined by RMR-Net instead of adding field-specific image
+# residual already defined by TRACE-R instead of adding field-specific image
 # processing or another trainable component.
 RMR_CANDIDATES = {
     f"rmr_fine_eta{str(eta).replace('.', 'p')}": eta
@@ -156,7 +155,7 @@ def parse_args() -> argparse.Namespace:
         "--metadata-root",
         type=Path,
         default=METADATA_ROOT,
-        help="Per-frame practical sensor sidecars used by RMR-Net.",
+        help="Per-frame practical sensor sidecars used by TRACE-R.",
     )
     parser.add_argument(
         "--rmr-metadata-mode",
@@ -205,6 +204,15 @@ def sha256(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def provenance_path(path: Path) -> str:
+    """Prefer repository-relative paths, retaining valid external audit roots."""
+    resolved = path.resolve()
+    try:
+        return str(resolved.relative_to(ROOT))
+    except ValueError:
+        return str(resolved)
 
 
 def split_names(split: str, split_root: Path = SPLIT_ROOT) -> list[str]:
@@ -394,13 +402,13 @@ def predict(
                 raise AssertionError(f"Native dimensions changed for {raw_path.name}")
             sources.append(cv2.addWeighted(raw, 1.0 - source, restored, source, 0.0))
         source_record = {
-            "raw": str(args.native_root.relative_to(ROOT)),
-            "restored": str(rmr_full.relative_to(ROOT)),
+            "raw": provenance_path(args.native_root),
+            "restored": provenance_path(rmr_full),
             "residual_strength_eta": source,
         }
     else:
         sources = [str(path) for path in resolve_sources(source, names)]
-        source_record = str(source.relative_to(ROOT))
+        source_record = provenance_path(source)
     results = model.predict(
         source=sources,
         imgsz=args.imgsz,
@@ -643,17 +651,17 @@ def main() -> None:
                     "selected_rmr_view": selected["method"],
                     "selection_metric": "validation primary AP@0.10, then F1@0.10, then relaxed coverage",
                     "validation_metrics": {key: selected[key] for key in ("ap10_primary", "ap50_primary", "f1_iou10", "f1_iou50", "coverage")},
-                    "detector": str(args.detector.relative_to(ROOT)),
+                    "detector": provenance_path(args.detector),
                     "detector_sha256": detector_hash,
                     "detector_selection": args.detector_provenance,
                     "detector_training_audit": (
-                        str((args.split_root / "audit.json").relative_to(ROOT))
+                        provenance_path(args.split_root / "audit.json")
                         if (args.split_root / "audit.json").exists()
                         else None
                     ),
-                    "rmr_checkpoint": str(checkpoint.relative_to(ROOT)) if checkpoint is not None else None,
+                    "rmr_checkpoint": provenance_path(checkpoint) if checkpoint is not None else None,
                     "rmr_checkpoint_sha256": sha256(checkpoint) if checkpoint is not None else None,
-                    "rmr_full_output": str(rmr_full.relative_to(ROOT)),
+                    "rmr_full_output": provenance_path(rmr_full),
                     "rmr_metadata": (
                         "unavailable control (all 82 packet channels zeroed)"
                         if args.rmr_metadata_mode == "unavailable"
@@ -668,12 +676,12 @@ def main() -> None:
                         )
                     ),
                     "rmr_metadata_mode": args.rmr_metadata_mode,
-                    "rmr_metadata_root": str(args.metadata_root.relative_to(ROOT)),
+                    "rmr_metadata_root": provenance_path(args.metadata_root),
                     "rmr_metadata_mode": args.rmr_metadata_mode,
-                    "native_root": str(args.native_root.relative_to(ROOT)),
-                    "split_root": str(args.split_root.relative_to(ROOT)),
-                    "label_root": str(args.label_root.relative_to(ROOT)),
-                    "baseline_root": str(args.baseline_root.relative_to(ROOT)),
+                    "native_root": provenance_path(args.native_root),
+                    "split_root": provenance_path(args.split_root),
+                    "label_root": provenance_path(args.label_root),
+                    "baseline_root": provenance_path(args.baseline_root),
                     "rmr_metadata_sha256": {
                         Path(name).stem: sha256(
                             args.metadata_root / f"{Path(name).stem}.json"
@@ -697,14 +705,14 @@ def main() -> None:
             json.dumps(
                 {
                     "status": "HELD_OUT_TEST_EXECUTED_ONCE",
-                    "frozen_selection": str(frozen.relative_to(ROOT)),
+                    "frozen_selection": provenance_path(frozen),
                     "detector_sha256": detector_hash,
                     "test_images": names,
-                    "rmr_metadata_root": str(args.metadata_root.relative_to(ROOT)),
-                    "native_root": str(args.native_root.relative_to(ROOT)),
-                    "split_root": str(args.split_root.relative_to(ROOT)),
-                    "label_root": str(args.label_root.relative_to(ROOT)),
-                    "baseline_root": str(args.baseline_root.relative_to(ROOT)),
+                    "rmr_metadata_root": provenance_path(args.metadata_root),
+                    "native_root": provenance_path(args.native_root),
+                    "split_root": provenance_path(args.split_root),
+                    "label_root": provenance_path(args.label_root),
+                    "baseline_root": provenance_path(args.baseline_root),
                     "rmr_metadata_sha256": {
                         Path(name).stem: sha256(
                             args.metadata_root / f"{Path(name).stem}.json"
