@@ -1,6 +1,6 @@
 {
   "status": "HELD_OUT_TEST_EXECUTED_ONCE",
-  "frozen_selection": "E:\\TRACE_R_experiments\\trace_crid46_direct_v67_20260828\\frozen_selection_before_test.json",
+  "frozen_selection": "E:\\TRACE_R_experiments\\trace_crid46_direct_v70_20260828\\frozen_selection_before_test.json",
   "detector_sha256": "1e7ebe925286b087d6912922bd093d157bfc9d47f47afab0c3dd086bd5a4b141",
   "test_images": [
     "Cam1_2026-06-09_14-58-15_capt1420_1421.jpg",
@@ -22,6 +22,13 @@
   "split_root": "datasets\\crid46_direct_sbg_external_detector_20260811",
   "label_root": "datasets\\gt46_sony_classbalanced_20260801",
   "baseline_root": "experiments\\final20260810_crid46_native_restoration",
+  "baseline_sources": {
+    "nafnet": "E:\\TRACE_R_experiments\\crid25_official_nafnet_outputs_v70\\nafnet\\images\\test",
+    "dfpir": "experiments\\final20260810_crid46_native_restoration\\dfpir\\images\\test",
+    "demoe_auto": "experiments\\final20260810_crid46_native_restoration\\demoe_auto\\images\\test",
+    "instructir": "experiments\\final20260810_crid46_native_restoration\\instructir_generic\\images\\test"
+  },
+  "rmr_full_output": "E:\\TRACE_R_experiments\\trace_crid46_direct_v67_20260828\\current_rmr_restored\\test",
   "rmr_metadata_sha256": {
     "Cam1_2026-06-09_14-58-15_capt1420_1421": "e89ddff87c663e437b243429dc45196d327c0a390c997de2873535b598062d9b",
     "Cam1_2026-06-09_14-58-20_capt1460_1461": "b8954a28148c114f34daa95f42f4ead91052110538a6c9f8445ece1e1ef62d26",

@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from baselines.demoe_adapter import DeMoEAdapter
 from baselines.dfpir_adapter import DFPIRAdapter
 from baselines.instructir_adapter import InstructIRAdapter, generic_road_prompt
-from baselines.nafnet_road import NAFNetRoad
+from baselines.nafnet_road import NAFNetRoad, build_nafnet_from_payload
 from models.rmrp_metadata_demoe import RMRPMetadataDeMoE
 from models.rmrp_prompted_dfpir import RMRPPromptedDFPIR
 from models.tracer_sensor_adapter import TRACESensorAdapterDeMoE
@@ -437,10 +437,9 @@ def native_partial_sensor_packet(
 
 
 def load_nafnet(weights: Path, device: torch.device) -> NAFNetRoad:
-    checkpoint = torch.load(weights, map_location=device)
-    arch = checkpoint.get("arch", {})
-    model = NAFNetRoad(width=arch.get("width", 32)).to(device)
-    model.load_state_dict(checkpoint["model"], strict=True)
+    checkpoint = torch.load(weights, map_location=device, weights_only=False)
+    model, _, _ = build_nafnet_from_payload(checkpoint)
+    model = model.to(device)
     model.eval()
     return model
 

@@ -3,9 +3,11 @@
 
 Every reported value is read from one of three frozen provenance bundles:
 
-* v65: one-time controlled IVCNZ/PCM confirmatory test;
+* final controlled ledger: one-time IVCNZ/PCM confirmatory test, including
+  the corrected official NAFNet evaluation;
 * v66: validation-only metadata interventions;
-* v67: native-resolution CRID field evaluation.
+* v70: native-resolution CRID field evaluation with the validation-selected
+  official NAFNet correction.
 
 This script performs no training, checkpoint selection, detector fusion, or
 metric optimization. It emits only paper assets and an asset manifest.
@@ -31,30 +33,28 @@ from matplotlib.patches import FancyArrowPatch
 
 ROOT = Path(__file__).resolve().parents[1]
 PAPER = ROOT / "paper_ieee_tits_trace_r"
-CONTROLLED = Path(r"E:\TRACE_R_experiments\trace_locked_confirmatory_v65_20260828")
+CONTROLLED = Path(r"E:\TRACE_R_experiments\trace_locked_confirmatory_v69_20260828")
 CONTROLS = Path(r"E:\TRACE_R_experiments\trace_metadata_controls_v66_20260828")
-CRID = Path(r"E:\TRACE_R_experiments\trace_crid46_direct_v67_20260828")
+CRID = Path(r"E:\TRACE_R_experiments\trace_crid46_direct_v70_20260828")
 
 METHODS = (
     "raw",
     "nafnet",
-    "nafnet_meta",
     "instructir",
     "dfpir",
     "demoe_auto",
     "trace_r",
     "demoe_oracle",
 )
-DEPLOYABLE = tuple(method for method in METHODS if method != "demoe_oracle")
+NON_ORACLE = tuple(method for method in METHODS if method != "demoe_oracle")
 DISPLAY = {
     "raw": "Degraded input",
     "nafnet": "NAFNet",
-    "nafnet_meta": "FiLM-NAFNet",
-    "instructir": "InstructIR*",
+    "instructir": "InstructIR",
     "dfpir": "DFPIR",
     "demoe_auto": "DeMoE-auto",
     "trace_r": "TRACE-R",
-    "demoe_oracle": "DeMoE-oracle*",
+    "demoe_oracle": "DeMoE-oracle",
 }
 CAUSES = ("motion", "defocus", "lowlight", "mixed")
 
@@ -153,8 +153,8 @@ def build_controlled_table(aggregate: dict[str, dict[str, str]]) -> str:
         "joint_mean_map50",
         "joint_mean_map50_95",
     )
-    deployable_best = {
-        field: [float(aggregate[method][field]) for method in DEPLOYABLE]
+    non_oracle_best = {
+        field: [float(aggregate[method][field]) for method in NON_ORACLE]
         for field in fields
     }
     rows: list[str] = []
@@ -165,7 +165,7 @@ def build_controlled_table(aggregate: dict[str, dict[str, str]]) -> str:
             name = rf"\emph{{{DISPLAY[method]}}}"
         else:
             rendered = [
-                bold_best(value, deployable_best[field])
+                bold_best(value, non_oracle_best[field])
                 for value, field in zip(values, fields, strict=True)
             ]
             name = DISPLAY[method]
@@ -184,9 +184,9 @@ def build_controlled_table(aggregate: dict[str, dict[str, str]]) -> str:
         ),
         rows,
         note=(
-            "Bold marks the best deployable method. *InstructIR receives the controlled "
-            "condition instruction and DeMoE-oracle receives the benchmark condition label; "
-            "the latter is a non-deployable upper bound. Every row uses one restored image "
+            "Bold marks the best non-oracle method. InstructIR and DFPIR receive the controlled "
+            "condition as their documented instruction or prompt; DeMoE-oracle receives the "
+            "condition label and is a non-deployable upper bound. Every row uses one restored image "
             "and the same frozen detector, with no prediction fusion."
         ),
     )
@@ -201,7 +201,7 @@ def build_condition_table(condition_rows: list[dict[str, str]]) -> str:
         f"{dataset}_{cause}" for dataset in ("ivcnz", "pcm") for cause in CAUSES
     ]
     best = {
-        name: [values[(method, name)] for method in DEPLOYABLE]
+        name: [values[(method, name)] for method in NON_ORACLE]
         for name in condition_names
     }
     rows: list[str] = []
@@ -230,7 +230,7 @@ def build_condition_table(condition_rows: list[dict[str, str]]) -> str:
             r" & Mot. & Def. & Low & Mix & Mot. & Def. & Low & Mix"
         ),
         rows,
-        note="Bold marks the best deployable method for each condition; the oracle row is excluded from bolding.",
+        note="Bold marks the best non-oracle method for each condition; the oracle row is excluded from bolding.",
     )
 
 
@@ -248,7 +248,7 @@ def build_fidelity_table(fidelity_rows: list[dict[str, str]]) -> str:
     for dataset in ("ivcnz", "pcm"):
         for metric_index in (0, 1):
             best[(dataset, metric_index)] = [
-                means[(method, dataset)][metric_index] for method in DEPLOYABLE
+                means[(method, dataset)][metric_index] for method in NON_ORACLE
             ]
     rows: list[str] = []
     for method in METHODS:
@@ -324,29 +324,23 @@ def build_crid_table(crid_rows: list[dict[str, str]]) -> str:
     indexed = index(crid_rows, "method")
     best10 = max(float(indexed[method]["ap10_primary"]) for method in order)
     best50 = max(float(indexed[method]["ap50_primary"]) for method in order)
-    bestmean = max(
-        0.5 * (float(indexed[method]["ap10_primary"]) + float(indexed[method]["ap50_primary"]))
-        for method in order
-    )
     rows = []
     for method in order:
         row = indexed[method]
         ap10 = float(row["ap10_primary"])
         ap50 = float(row["ap50_primary"])
-        mean = 0.5 * (ap10 + ap50)
         coverage = float(row["coverage"])
         rendered = [
-            rf"\textbf{{{ap10:.3f}}}" if ap10 >= best10 - 1e-12 else f"{ap10:.3f}",
             rf"\textbf{{{ap50:.3f}}}" if ap50 >= best50 - 1e-12 else f"{ap50:.3f}",
-            rf"\textbf{{{mean:.3f}}}" if mean >= bestmean - 1e-12 else f"{mean:.3f}",
+            rf"\textbf{{{ap10:.3f}}}" if ap10 >= best10 - 1e-12 else f"{ap10:.3f}",
             f"{coverage:.3f}",
         ]
         rows.append(" & ".join([display[method], *rendered]))
     return latex_table(
         "Native-resolution CRID temporal field evaluation (13 frames, 49 annotated defects).",
         "tab:crid",
-        "lrrrr",
-        r"Method & AP@.10 & AP@.50 & Mean AP & GT coverage",
+        "lrrr",
+        r"Method & Pooled AP50 & AP10 sensitivity & GT coverage",
         rows,
         wide=False,
         note=(
@@ -359,7 +353,7 @@ def build_crid_table(crid_rows: list[dict[str, str]]) -> str:
 
 def build_training_table(ledger: dict[str, Any]) -> str:
     rows = []
-    for method in ("nafnet", "nafnet_meta", "instructir", "dfpir", "demoe_auto", "trace_r"):
+    for method in ("nafnet", "instructir", "dfpir", "demoe_auto", "trace_r"):
         policy = ledger["policies"][method]
         rows.append(
             " & ".join(
@@ -435,95 +429,124 @@ def arrow(axis: plt.Axes, start: tuple[float, float], end: tuple[float, float]) 
 
 
 def build_architecture_figure(path: Path) -> None:
-    fig, axis = plt.subplots(figsize=(7.16, 3.35))
+    fig, axis = plt.subplots(figsize=(7.16, 3.55))
     axis.set_xlim(0.0, 1.0)
     axis.set_ylim(0.0, 1.0)
     axis.axis("off")
 
+    ink = "#25313b"
     blue = "#dcebf7"
-    green = "#e1f1e5"
-    amber = "#faedd2"
+    green = "#dff0e4"
+    amber = "#f7e8c8"
     grey = "#eef0f2"
-    red = "#f7e1df"
+    red = "#f6dfdc"
 
-    rounded_box(axis, (0.02, 0.62), 0.13, 0.18, "Degraded image\n$I_d$", face=grey, weight="bold")
-    rounded_box(
-        axis,
-        (0.02, 0.24),
-        0.13,
-        0.24,
-        "Capture packet $m$\n33 gyro values\n33 accel values\n16 context fields",
-        face=blue,
-        fontsize=6.2,
-    )
-
-    rounded_box(axis, (0.21, 0.64), 0.16, 0.15, "Image corruption\nestimator $z_I$", face=amber)
-    rounded_box(axis, (0.21, 0.34), 0.16, 0.18, "Physical sensor encoder\n$z_m=h(m)$\nreliability $q$", face=blue)
-    rounded_box(axis, (0.21, 0.13), 0.16, 0.13, "Partial-modality masks\n" + r"$C,I,V\in\{0,1\}$", face=grey)
-
-    rounded_box(
-        axis,
-        (0.43, 0.36),
-        0.18,
-        0.27,
-        "Joint capture state\n$s=[z_I,z_m,|z_m-z_I|,q]$\n\nmissing groups fall back\nto image evidence",
-        face=green,
-        fontsize=6.5,
-        weight="bold",
-    )
-
-    rounded_box(
-        axis,
-        (0.66, 0.40),
-        0.17,
-        0.31,
-        "Shared DeMoE backbone\n"
-        "sensor-grounded top-1 route\n\n"
-        "nine low-rank adapters\n"
-        + r"encoder $\rightarrow$ bottleneck"
-        + "\n"
-        + r"$\rightarrow$ decoder",
-        face=green,
-        fontsize=6.3,
-    )
-
-    rounded_box(axis, (0.86, 0.50), 0.12, 0.20, "One restored image\n$I_r$\n\nno view or\nbox fusion", face=red, fontsize=6.2, weight="bold")
-    rounded_box(axis, (0.86, 0.20), 0.12, 0.14, "Unchanged\nroad-defect detector", face=grey, fontsize=6.2)
-
-    arrow(axis, (0.15, 0.71), (0.21, 0.71))
-    # Main image path: the image itself always enters the shared restorer.
-    axis.add_patch(
-        FancyArrowPatch(
-            (0.15, 0.77),
-            (0.66, 0.66),
-            arrowstyle="-|>",
-            mutation_scale=8,
-            linewidth=0.85,
-            color="#30343b",
-            connectionstyle="arc3,rad=-0.18",
+    # Section guides make the reading order visible without filling the page
+    # with implementation prose.
+    for x, width, label in (
+        (0.015, 0.205, "OBSERVATIONS"),
+        (0.245, 0.285, "CORRUPTION STATE"),
+        (0.555, 0.275, "SHARED RESTORER"),
+        (0.855, 0.13, "OUTPUT"),
+    ):
+        axis.add_patch(
+            mpl.patches.FancyBboxPatch(
+                (x, 0.08), width, 0.84,
+                boxstyle="round,pad=0.006,rounding_size=0.01",
+                linewidth=0.65, edgecolor="#aeb5ba", facecolor="white",
+            )
         )
-    )
-    axis.text(0.48, 0.825, "image stream", ha="center", va="center", fontsize=6.1)
-    arrow(axis, (0.15, 0.38), (0.21, 0.43))
-    arrow(axis, (0.15, 0.33), (0.21, 0.20))
-    arrow(axis, (0.37, 0.71), (0.43, 0.58))
-    arrow(axis, (0.37, 0.43), (0.43, 0.50))
-    arrow(axis, (0.37, 0.20), (0.47, 0.36))
-    arrow(axis, (0.61, 0.50), (0.66, 0.54))
-    arrow(axis, (0.83, 0.56), (0.86, 0.59))
-    arrow(axis, (0.92, 0.50), (0.92, 0.34))
+        axis.text(x + 0.012, 0.885, label, color="#59656d", fontsize=6.2, fontweight="bold")
 
-    axis.text(0.015, 0.93, "TRACE-R inference", fontsize=8.4, fontweight="bold")
-    axis.plot([0.015, 0.985], [0.90, 0.90], color="#30343b", linewidth=0.7)
-    axis.text(
-        0.5,
-        0.035,
-        r"Adapter: $x'_l=x_l+a_l(s,q)P_l\,\sigma(D_l(Q_l\,\mathcal{N}(x_l);s))$; "
-        r"$P_l$ is zero-initialized, so the matched backbone is unchanged before adaptation.",
-        ha="center",
-        va="bottom",
-        fontsize=6.6,
+    # Image observation, drawn as a compact road scene so the figure remains
+    # vector-native.
+    axis.add_patch(mpl.patches.Rectangle((0.035, 0.61), 0.165, 0.20, facecolor="#c8d8df", edgecolor=ink, linewidth=0.75))
+    axis.add_patch(mpl.patches.Polygon([(0.035, 0.61), (0.200, 0.61), (0.142, 0.76), (0.095, 0.76)], closed=True, facecolor="#596269", edgecolor="none"))
+    axis.plot([0.118, 0.119], [0.615, 0.75], color="white", linewidth=1.2)
+    axis.plot([0.174, 0.134], [0.615, 0.75], color="#f1c94a", linewidth=0.8)
+    axis.text(0.117, 0.585, "road image  $I_d$", ha="center", va="top", fontsize=6.6, fontweight="bold")
+
+    rounded_box(axis, (0.035, 0.43), 0.165, 0.11, "camera\nexposure / gain / focus", face=blue, fontsize=6.2)
+    rounded_box(axis, (0.035, 0.14), 0.165, 0.11, "vehicle and timing\nspeed · pose · sync quality", face=grey, fontsize=6.0)
+
+    # Real SBG angular-rate samples provide a visual example of the temporal
+    # measurement aligned to an exposure. Fall back to a deterministic trace
+    # only when the field log is absent from a redistributed source package.
+    trace = np.array([0.0, 0.4, -0.2, 0.7, -0.4, 0.2, 0.0], dtype=float)
+    sensor_path = ROOT / "ac1.csv"
+    if sensor_path.exists():
+        values: list[float] = []
+        with sensor_path.open(encoding="utf-8", errors="replace") as handle:
+            for row_index, line in enumerate(handle):
+                if row_index < 3:
+                    continue
+                fields = line.rstrip().split("\t")
+                if len(fields) < 15:
+                    continue
+                try:
+                    values.append(float(fields[12]))
+                except ValueError:
+                    continue
+                if len(values) == 35:
+                    break
+        if values:
+            trace = np.asarray(values, dtype=float)
+            trace = (trace - trace.mean()) / max(trace.std(), 1e-6)
+    imu_axis = axis.inset_axes([0.050, 0.275, 0.135, 0.075])
+    imu_axis.plot(np.linspace(-1.0, 1.0, len(trace)), trace, color="#2171a5", linewidth=0.85)
+    imu_axis.axvspan(-0.45, 0.45, color="#dcebf7", alpha=0.8, linewidth=0)
+    imu_axis.axhline(0.0, color="#aeb5ba", linewidth=0.4)
+    imu_axis.set_xticks([]); imu_axis.set_yticks([])
+    for spine in imu_axis.spines.values():
+        spine.set_color("#7f8a91"); spine.set_linewidth(0.45)
+    axis.text(0.117, 0.355, "measured IMU trajectory", ha="center", va="bottom", fontsize=6.1)
+
+    rounded_box(axis, (0.265, 0.62), 0.105, 0.13, "image estimate\n$z_I=g_I(I_d)$", face=amber, fontsize=6.4)
+    rounded_box(
+        axis,
+        (0.265, 0.30),
+        0.105,
+        0.18,
+        "physical evidence\n" + r"$h_{\mathrm{phy}}(\mathcal{M})$" + "\n\navailability / quality",
+        face=blue,
+        fontsize=6.1,
     )
+    rounded_box(axis, (0.405, 0.42), 0.105, 0.22, "joint posterior\n\n$z$  and  $q$\n\nimage fallback", face=green, fontsize=6.3, weight="bold")
+    arrow(axis, (0.200, 0.70), (0.265, 0.69))
+    arrow(axis, (0.200, 0.45), (0.265, 0.40))
+    arrow(axis, (0.200, 0.31), (0.265, 0.37))
+    arrow(axis, (0.370, 0.685), (0.405, 0.58))
+    arrow(axis, (0.370, 0.39), (0.405, 0.48))
+
+    # A compact U-shaped backbone with state-conditioned adapter taps.
+    backbone_blocks = [
+        (0.575, 0.60, 0.045, 0.14),
+        (0.625, 0.53, 0.045, 0.21),
+        (0.675, 0.45, 0.045, 0.29),
+        (0.725, 0.53, 0.045, 0.21),
+        (0.775, 0.60, 0.035, 0.14),
+    ]
+    for index_value, (x, y, width, height) in enumerate(backbone_blocks):
+        color = "#d7e7ef" if index_value < 2 else ("#eadfca" if index_value == 2 else "#dff0e4")
+        axis.add_patch(mpl.patches.Rectangle((x, y), width, height, facecolor=color, edgecolor=ink, linewidth=0.65))
+        axis.add_patch(mpl.patches.Circle((x + width / 2, y + height + 0.035), 0.012, facecolor="#b33a3a", edgecolor="white", linewidth=0.5))
+        if index_value:
+            px, py, pw, ph = backbone_blocks[index_value - 1]
+            arrow(axis, (px + pw, py + ph / 2), (x, y + height / 2))
+    axis.text(0.692, 0.78, "state-conditioned adapters", ha="center", fontsize=6.2, color="#8d2e2e")
+    axis.text(0.600, 0.57, "encoder", ha="center", fontsize=5.8)
+    axis.text(0.697, 0.40, "bottleneck", ha="center", fontsize=5.8)
+    axis.text(0.770, 0.57, "decoder", ha="center", fontsize=5.8)
+    axis.text(0.692, 0.25, "generic multi-scale backbone $B$", ha="center", fontsize=6.5, fontweight="bold")
+    arrow(axis, (0.510, 0.53), (0.575, 0.67))
+    axis.add_patch(FancyArrowPatch((0.200, 0.77), (0.575, 0.71), arrowstyle="-|>", mutation_scale=8, linewidth=0.8, color=ink, connectionstyle="arc3,rad=-0.12"))
+
+    rounded_box(axis, (0.875, 0.57), 0.09, 0.15, "restored image\n$I_r$", face=red, fontsize=6.4, weight="bold")
+    rounded_box(axis, (0.875, 0.28), 0.09, 0.13, "road-defect\ndetector", face=grey, fontsize=6.2)
+    arrow(axis, (0.810, 0.67), (0.875, 0.65))
+    arrow(axis, (0.920, 0.57), (0.920, 0.41))
+
+    axis.text(0.500, 0.025, "Telemetry changes supported internal features; the deployed output is a single restored image.", ha="center", va="bottom", fontsize=6.5, color="#4c5860")
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)
@@ -535,9 +558,9 @@ def build_controlled_figure(
     path: Path,
 ) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(7.16, 2.55), constrained_layout=True)
-    methods = ("raw", "nafnet", "nafnet_meta", "instructir", "dfpir", "demoe_auto", "trace_r")
+    methods = ("raw", "nafnet", "instructir", "dfpir", "demoe_auto", "trace_r")
     values = [float(aggregate[method]["joint_mean_map50"]) for method in methods]
-    colors = ["#a8adb3", "#8fb7cc", "#77a8c3", "#d5a85e", "#6e9d80", "#9676a8", "#b33a3a"]
+    colors = ["#a8adb3", "#8fb7cc", "#d5a85e", "#6e9d80", "#9676a8", "#b33a3a"]
     axes[0].bar(np.arange(len(methods)), values, color=colors, edgecolor="#30343b", linewidth=0.45)
     axes[0].set_xticks(np.arange(len(methods)), [DISPLAY[method].replace("*", "") for method in methods], rotation=32, ha="right")
     axes[0].set_ylabel("Joint mean mAP50")
@@ -582,19 +605,17 @@ def build_crid_figure(rows: list[dict[str, str]], path: Path) -> None:
         "rmr_fine_eta0p5": "TRACE-R",
     }
     indexed = index(rows, "method")
-    ap10 = [float(indexed[method]["ap10_primary"]) for method in order]
     ap50 = [float(indexed[method]["ap50_primary"]) for method in order]
     x = np.arange(len(order))
-    width = 0.36
     fig, axis = plt.subplots(figsize=(3.5, 2.45))
-    axis.bar(x - width / 2, ap10, width, label="AP@.10", color="#8fb7cc", edgecolor="#30343b", linewidth=0.45)
-    axis.bar(x + width / 2, ap50, width, label="AP@.50", color="#b33a3a", edgecolor="#30343b", linewidth=0.45)
+    bars = axis.bar(x, ap50, 0.62, color=["#a8adb3", "#8fb7cc", "#d5a85e", "#6e9d80", "#9676a8", "#b33a3a"], edgecolor="#30343b", linewidth=0.45)
     axis.set_xticks(x, [display[method] for method in order], rotation=30, ha="right")
-    axis.set_ylabel("Average precision")
-    axis.set_ylim(0.0, 0.68)
+    axis.set_ylabel("Pooled AP50")
+    axis.set_ylim(0.0, max(ap50) * 1.22)
     axis.grid(axis="y", color="#d8dadd", linewidth=0.45)
     axis.spines[["top", "right"]].set_visible(False)
-    axis.legend(frameon=False, ncol=2, loc="upper left")
+    for bar, value in zip(bars, ap50, strict=True):
+        axis.text(bar.get_x() + bar.get_width() / 2, value + 0.012, f"{value:.3f}", ha="center", va="bottom", fontsize=5.8)
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)

@@ -15,7 +15,6 @@
   "detector_training_audit": "datasets\\crid46_direct_sbg_external_detector_20260811\\audit.json",
   "rmr_checkpoint": "E:\\TRACE_R_experiments\\matched_budget_trace_v53_20260827\\train\\rmrp_epoch_008.pth",
   "rmr_checkpoint_sha256": "a79e2a775e576f17cfe78688484985830e89de7fbe582eca10d43cc4e0cf59db",
-  "rmr_full_output": "E:\\TRACE_R_experiments\\trace_crid46_direct_v67_20260828\\current_rmr_restored\\val",
   "rmr_metadata": "native nested Sony EXIF plus complete 200 Hz SBG INS: measured body acceleration and attitude-derived angular rate calibrated against the overlapping direct-rate log",
   "rmr_metadata_mode": "provided",
   "rmr_metadata_root": "experiments\\geotagged_cam1_complete_sbg_ins_metadata_v4_20260811\\metadata",
@@ -23,6 +22,13 @@
   "split_root": "datasets\\crid46_direct_sbg_external_detector_20260811",
   "label_root": "datasets\\gt46_sony_classbalanced_20260801",
   "baseline_root": "experiments\\final20260810_crid46_native_restoration",
+  "baseline_sources": {
+    "nafnet": "E:\\TRACE_R_experiments\\crid25_official_nafnet_outputs_v70\\nafnet\\images\\test",
+    "dfpir": "experiments\\final20260810_crid46_native_restoration\\dfpir\\images\\test",
+    "demoe_auto": "experiments\\final20260810_crid46_native_restoration\\demoe_auto\\images\\test",
+    "instructir": "experiments\\final20260810_crid46_native_restoration\\instructir_generic\\images\\test"
+  },
+  "rmr_full_output": "E:\\TRACE_R_experiments\\trace_crid46_direct_v67_20260828\\current_rmr_restored\\val",
   "rmr_metadata_sha256": {
     "Cam1_2026-06-09_14-56-02_capt0360_361": "b63ae636e5ecac5817cea452f51ae4f486ee6b26df6ed549517f154b72efa82c",
     "Cam1_2026-06-09_14-56-12_capt0440_441": "21837ea463784c6cc40ca737d9bed6912700fd24723375480a9e62d314aeed25",

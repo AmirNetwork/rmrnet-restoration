@@ -31,5 +31,8 @@ protocol manifests, not raw images or coordinates.
 - CRID detector SHA-256:
   `1e7ebe925286b087d6912922bd093d157bfc9d47f47afab0c3dd086bd5a4b141`
 
-Download DeMoE, DFPIR, InstructIR, and NAFNet weights from their official
-repositories. The paper bibliography gives the corresponding publications.
+Download DeMoE, DFPIR, and InstructIR weights from their official repositories.
+The NAFNet comparison starts from the authors' released
+`NAFNet-GoPro-width32.pth` checkpoint. Its expected SHA-256 is
+`19394e6155d12ef6371d1d57496f87f0ec88f92bdffa27c0792690722d5d1a5c`.
+The paper bibliography gives the corresponding publications.

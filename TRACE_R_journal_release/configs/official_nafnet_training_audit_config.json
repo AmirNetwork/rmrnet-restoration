@@ -1,0 +1,213 @@
+{
+  "protocol": "matched target-domain adaptation v1",
+  "test_split_used": false,
+  "selection": "external validation-only detector mAP",
+  "model": "nafnet",
+  "method_display": "nafnet",
+  "training_roots": {
+    "ivcnz": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\data\\pothole_restoration_practical_sensor_calibrated_v2_train",
+    "pcm": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\data\\pcm_restoration_practical_sensor_calibrated_v2_train"
+  },
+  "scenarios": [
+    "clean",
+    "motion_horizontal_medium",
+    "defocus_medium",
+    "lowlight_medium",
+    "mixed_motion_lowlight"
+  ],
+  "group_counts": {
+    "ivcnz:clean": 731,
+    "ivcnz:defocus_medium": 731,
+    "ivcnz:lowlight_medium": 731,
+    "ivcnz:mixed_motion_lowlight": 731,
+    "ivcnz:motion_horizontal_medium": 731,
+    "pcm:clean": 1402,
+    "pcm:defocus_medium": 1402,
+    "pcm:lowlight_medium": 1402,
+    "pcm:mixed_motion_lowlight": 1402,
+    "pcm:motion_horizontal_medium": 1402
+  },
+  "samples_per_epoch": 512,
+  "effective_batch_size": 4,
+  "micro_batch_size": 2,
+  "gradient_accumulation": 2,
+  "optimizer_steps": 4096,
+  "optimizer_parameter_groups": {
+    "core": {
+      "parameters": 17111907,
+      "initial_lr": 1e-05
+    }
+  },
+  "common_objective": {
+    "charbonnier": 1.0,
+    "gradient": 0.15,
+    "detector_feature": 0.2,
+    "detector_supervised": 0.1,
+    "detector_supervised_input_size": 320,
+    "detector_supervised_letterbox": false,
+    "clean_detector_evidence_distillation": 0.0,
+    "evidence_distillation_foreground_topk": 96,
+    "evidence_distillation_background_topk": 96,
+    "evidence_distillation_box_weight": 0.25,
+    "parameter_anchor": 0.0,
+    "detector_cqmix_probability": 0.25,
+    "detector_clean_hinge_weight": 0.25,
+    "detector_feature_layers": [
+      "model.2",
+      "model.4"
+    ],
+    "detector_feature_layer_weights": [
+      0.5,
+      1.0
+    ],
+    "detector_feature_defect_box_weight": 1.0,
+    "dataset_gradient_surgery": false,
+    "dataset_gradient_merge": "standard effective-batch mean"
+  },
+  "rmrp_state_objective": {
+    "cause": 0.0,
+    "physical": 0.0,
+    "metadata_dropout": 0.0,
+    "metadata_noise": 0.0,
+    "metadata_mismatch_probability": 0.0,
+    "metadata_curriculum_aligned_epochs": 0,
+    "metadata_curriculum_ramp_epochs": 0,
+    "route_teacher_epochs": 0,
+    "route_teacher_ramp_epochs": 0,
+    "sensor_state_masking": false
+  },
+  "load_report": {
+    "initializations": [
+      "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\weights\\nafnet\\NAFNet-GoPro-width32.pth"
+    ],
+    "sha256": [
+      "19394e6155d12ef6371d1d57496f87f0ec88f92bdffa27c0792690722d5d1a5c"
+    ],
+    "missing_keys": [],
+    "unexpected_keys": [],
+    "model_soup_members": 1,
+    "faithful_official_nafnet": true
+  },
+  "args": {
+    "model": "nafnet",
+    "data_root": [
+      [
+        "ivcnz",
+        "data\\pothole_restoration_practical_sensor_calibrated_v2_train"
+      ],
+      [
+        "pcm",
+        "data\\pcm_restoration_practical_sensor_calibrated_v2_train"
+      ]
+    ],
+    "scenarios": null,
+    "detector": [
+      [
+        "ivcnz",
+        "runs\\detect\\runs\\yolo11s_sequence_disjoint_v1_20260716\\pothole_clean_80ep\\weights\\best.pt"
+      ],
+      [
+        "pcm",
+        "runs\\detect\\runs\\yolo11s_sequence_disjoint_v1_20260716\\pcm_clean_80ep\\weights\\best.pt"
+      ]
+    ],
+    "init_weights": [
+      "weights\\nafnet\\NAFNet-GoPro-width32.pth"
+    ],
+    "lm_head_weights": null,
+    "out": "E:\\TRACE_R_experiments\\official_nafnet_matched_v68_20260828\\train",
+    "epochs": 32,
+    "samples_per_epoch": 512,
+    "patch_size": 128,
+    "effective_batch_size": 4,
+    "micro_batch_size": 2,
+    "lr": 1e-05,
+    "min_lr_ratio": 0.05,
+    "weight_decay": 0.0001,
+    "new_module_lr_multiplier": 1.0,
+    "edge_weight": 0.15,
+    "base_weight": 1.0,
+    "tdp_weight": 0.2,
+    "detector_supervised_weight": 0.1,
+    "tdp_input_size": 320,
+    "detector_supervised_input_size": 0,
+    "detector_supervised_letterbox": false,
+    "tdp_warmup_epochs": 1,
+    "evidence_distillation_weight": 0.0,
+    "evidence_distillation_topk": 96,
+    "evidence_distillation_background_topk": 96,
+    "evidence_distillation_box_weight": 0.25,
+    "parameter_anchor_weight": 0.0,
+    "tdp_layer_names": [
+      "model.2",
+      "model.4"
+    ],
+    "tdp_defect_mask_weight": 1.0,
+    "detector_cqmix_probability": 0.25,
+    "detector_clean_hinge_weight": 0.25,
+    "state_weight": 0.5,
+    "physical_weight": 0.2,
+    "metadata_dropout": 0.35,
+    "metadata_noise": 0.015,
+    "metadata_mismatch_probability": 0.1,
+    "metadata_curriculum_epochs": 0,
+    "metadata_curriculum_ramp_epochs": 0,
+    "route_teacher_epochs": 0,
+    "route_teacher_ramp_epochs": 0,
+    "rmrp_sensor_route_mode": "posterior",
+    "rmrp_bounded_refiner": false,
+    "rmrp_refiner_gain": 0.12,
+    "rmrp_cause_refiners": false,
+    "rmrp_cause_refiner_gain": 0.08,
+    "rmrp_backbone_route_mode": "metadata",
+    "rmrp_sensor_task_mixed_expert": null,
+    "rmrp_sensor_task_thresholds": null,
+    "rmrp_semantic_adapters": false,
+    "rmrp_semantic_adapter_gain": 0.25,
+    "rmrp_cause_feature_adapters": false,
+    "rmrp_cause_feature_adapter_gain": 0.18,
+    "rmrp_freeze_cause_feature_adapters_only": false,
+    "rmrp_train_cause_feature_and_routed_experts": false,
+    "rmrp_cause_feature_indices": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "rmrp_freeze_semantic_adapters_only": false,
+    "rmrp_freeze_cause_refiners_only": false,
+    "rmrp_freeze_routed_experts_only": false,
+    "rmrp_train_feature_and_routed_experts": false,
+    "rmrp_routed_expert_indices": [
+      0,
+      3,
+      4
+    ],
+    "rmrp_freeze_backbone": false,
+    "rmrp_compound_blend_gate": false,
+    "rmrp_compound_blend_init": 0.65,
+    "rmrp_compound_metadata_acceptance": null,
+    "rmrp_freeze_compound_gate_only": false,
+    "rmrp_compound_motion_blend": 0.0,
+    "rmrp_compound_refiner": false,
+    "rmrp_compound_refiner_gain": 0.18,
+    "defect_label_root": [
+      [
+        "ivcnz",
+        "datasets\\pothole_yolo_sequence_disjoint_v1\\labels\\train"
+      ],
+      [
+        "pcm",
+        "datasets\\road_damage_pcm_yolo_sequence_disjoint_v1\\labels\\train"
+      ]
+    ],
+    "defect_crop_probability": 0.6,
+    "dataset_gradient_surgery": false,
+    "save_every": 4,
+    "num_workers": 0,
+    "seed": 2026,
+    "device": "cuda",
+    "smoke_steps": 0,
+    "resume_from": null
+  }
+}

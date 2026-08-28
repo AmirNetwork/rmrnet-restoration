@@ -24,7 +24,7 @@ from baselines.demoe_adapter import DeMoEAdapter
 from baselines.dfpir_adapter import DFPIRAdapter
 from baselines.instructir_adapter import InstructIRAdapter
 from baselines.nafnet_metadata import MetadataNAFNetRoad
-from baselines.nafnet_road import NAFNetRoad
+from baselines.nafnet_road import NAFNetRoad, build_nafnet_from_payload
 from models.rmrnet import RMRNet
 from models.tracer import TRACERExpertFusion, TRACERPolicy
 from models.rmrp_metadata_demoe import RMRPMetadataDeMoE
@@ -636,9 +636,8 @@ def instructir_prompt(scenario: str, mode: str) -> str:
 
 def load_nafnet(weights: str, device: torch.device) -> NAFNetRoad:
     checkpoint = torch.load(weights, map_location=device, weights_only=False)
-    arch = checkpoint.get("arch", {})
-    model = NAFNetRoad(width=arch.get("width", 32)).to(device)
-    model.load_state_dict(checkpoint["model"], strict=True)
+    model, _, _ = build_nafnet_from_payload(checkpoint)
+    model = model.to(device)
     model.eval()
     return model
 

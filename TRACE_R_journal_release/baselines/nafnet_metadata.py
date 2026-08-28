@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from .nafnet_road import NAFBlock
+from .nafnet_road import CompactNAFBlock
 
 
 class CodeFiLM(nn.Module):
@@ -39,15 +39,15 @@ class MetadataNAFNetRoad(nn.Module):
         self.width = int(width)
         self.code_dim = int(code_dim)
         self.stem = nn.Conv2d(3, width, 3, padding=1)
-        self.enc1 = nn.Sequential(*[NAFBlock(width) for _ in range(blocks_per_stage)])
+        self.enc1 = nn.Sequential(*[CompactNAFBlock(width) for _ in range(blocks_per_stage)])
         self.down1 = nn.Conv2d(width, width * 2, 2, stride=2)
-        self.enc2 = nn.Sequential(*[NAFBlock(width * 2) for _ in range(blocks_per_stage)])
+        self.enc2 = nn.Sequential(*[CompactNAFBlock(width * 2) for _ in range(blocks_per_stage)])
         self.down2 = nn.Conv2d(width * 2, width * 4, 2, stride=2)
-        self.mid = nn.Sequential(*[NAFBlock(width * 4) for _ in range(blocks_per_stage + 1)])
+        self.mid = nn.Sequential(*[CompactNAFBlock(width * 4) for _ in range(blocks_per_stage + 1)])
         self.up2 = nn.Conv2d(width * 4, width * 2, 1)
-        self.dec2 = nn.Sequential(*[NAFBlock(width * 2) for _ in range(blocks_per_stage)])
+        self.dec2 = nn.Sequential(*[CompactNAFBlock(width * 2) for _ in range(blocks_per_stage)])
         self.up1 = nn.Conv2d(width * 2, width, 1)
-        self.dec1 = nn.Sequential(*[NAFBlock(width) for _ in range(blocks_per_stage)])
+        self.dec1 = nn.Sequential(*[CompactNAFBlock(width) for _ in range(blocks_per_stage)])
         self.head = nn.Conv2d(width, 3, 3, padding=1)
         self.film1 = CodeFiLM(code_dim, width)
         self.film2 = CodeFiLM(code_dim, width * 2)

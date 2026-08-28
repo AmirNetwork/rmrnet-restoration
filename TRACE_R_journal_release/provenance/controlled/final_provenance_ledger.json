@@ -1,5 +1,5 @@
 {
-  "status": "confirmatory_test_complete",
+  "status": "confirmatory_test_complete_with_official_nafnet_correction",
   "frozen_at_utc": "2026-08-27T15:30:37.914210+00:00",
   "selection_split": "validation only",
   "test_used_for_selection": false,
@@ -8,51 +8,45 @@
   "policies": {
     "nafnet": {
       "model": "nafnet",
-      "epoch": 70,
-      "checkpoint": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\experiments\\matched_final_candidate_index_v28_epoch70_20260821\\nafnet\\nafnet_epoch_070.pth",
-      "validation_joint_map50": 0.26983377934709435,
+      "architecture": "NAFNet width 32; enc_blk_nums [1,1,1,28]; middle_blk_num 1; dec_blk_nums [1,1,1,1]",
+      "epoch": 28,
+      "checkpoint": "E:\\TRACE_R_experiments\\official_nafnet_matched_v68_20260828\\train\\nafnet_epoch_028.pth",
+      "validation_joint_map50": 0.3394386569265586,
       "inference_information": "image only",
-      "checkpoint_sha256": "b5e7f89761eea2d054dcbea0c54f2af1c3a7975e8ec8e65a337cfa965207affc",
-      "scenario_labels_at_inference": false,
-      "detector_output_fusion": false,
-      "single_restored_image": true
-    },
-    "nafnet_meta": {
-      "model": "nafnet_meta",
-      "epoch": 70,
-      "checkpoint": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\experiments\\matched_final_candidate_index_v28_epoch70_20260821\\nafnet_meta\\nafnet_meta_epoch_070.pth",
-      "validation_joint_map50": 0.2732224578019495,
-      "inference_information": "same 82-field packet",
-      "checkpoint_sha256": "16d2db0702549086a7ee95d2223555fa3dd3e091b0b60348570373ecdca44aa6",
+      "checkpoint_sha256": "d21aaebf3e4df7e822a568dfef29c5810d19e3e27330db1bc41c607e56313a77",
       "scenario_labels_at_inference": false,
       "detector_output_fusion": false,
       "single_restored_image": true
     },
     "instructir": {
       "model": "instructir",
-      "epoch": 70,
+      "epoch": 32,
       "checkpoint": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\experiments\\matched_final_candidate_index_v28_epoch70_20260821\\instructir\\instructir_epoch_070.pth",
       "validation_joint_map50": 0.37167751469077975,
-      "inference_information": "image only",
+      "inference_information": "scenario text instruction required by the published interface",
       "checkpoint_sha256": "4d97860f360bf21cffa90011db3c5a14501ed27df9bbd5b743a8ebe8e0bc7ecc",
       "scenario_labels_at_inference": true,
       "detector_output_fusion": false,
-      "single_restored_image": true
+      "single_restored_image": true,
+      "checkpoint_index_label": 70,
+      "optimizer_updates": 4096
     },
     "dfpir": {
       "model": "dfpir",
-      "epoch": 70,
+      "epoch": 32,
       "checkpoint": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\experiments\\matched_final_candidate_index_v28_epoch70_20260821\\dfpir\\dfpir_epoch_070.pth",
       "validation_joint_map50": 0.3865609914952747,
-      "inference_information": "image only",
+      "inference_information": "scenario CLIP prompt required by the published interface",
       "checkpoint_sha256": "cca8f4b00a2e6468cb8bcd267393082b7c781500a7f10de1da626f4c0ee4caaf",
-      "scenario_labels_at_inference": false,
+      "scenario_labels_at_inference": true,
       "detector_output_fusion": false,
-      "single_restored_image": true
+      "single_restored_image": true,
+      "checkpoint_index_label": 70,
+      "optimizer_updates": 4096
     },
     "demoe_auto": {
       "model": "demoe",
-      "epoch": 70,
+      "epoch": 32,
       "checkpoint": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\experiments\\matched_final_candidate_index_v28_epoch70_20260821\\demoe\\demoe_epoch_070.pth",
       "validation_joint_map50": 0.3507887979181592,
       "demoe_task": "auto",
@@ -60,11 +54,13 @@
       "checkpoint_sha256": "743f106d380bd8db5d9020917dbc53e668785c23e3b065fe74defda9f90c4cc8",
       "scenario_labels_at_inference": false,
       "detector_output_fusion": false,
-      "single_restored_image": true
+      "single_restored_image": true,
+      "checkpoint_index_label": 70,
+      "optimizer_updates": 4096
     },
     "demoe_oracle": {
       "model": "demoe",
-      "epoch": 70,
+      "epoch": 32,
       "checkpoint": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\experiments\\matched_final_candidate_index_v28_epoch70_20260821\\demoe\\demoe_epoch_070.pth",
       "validation_joint_map50": 0.400330512510395,
       "demoe_task": "scenario",
@@ -72,7 +68,9 @@
       "checkpoint_sha256": "743f106d380bd8db5d9020917dbc53e668785c23e3b065fe74defda9f90c4cc8",
       "scenario_labels_at_inference": true,
       "detector_output_fusion": false,
-      "single_restored_image": true
+      "single_restored_image": true,
+      "checkpoint_index_label": 70,
+      "optimizer_updates": 4096
     },
     "trace_r": {
       "model": "rmrp",
@@ -106,12 +104,88 @@
     "pcm:lowlight": "f8737c6db6f3ffaa9aac03e6f7c05428850387dc24bd44a78d86639c15d31105",
     "pcm:mixed": "917ddf803c5adb75ebc5866739a9b698fc952cd94d79a0c5320177ace2b7baa5"
   },
-  "completed_at_utc": "2026-08-27T17:04:55.778644+00:00",
+  "completed_at_utc": "2026-08-28T02:26:49.685763+00:00",
   "test_split_opened_after_selection_freeze": true,
   "artifacts": {
-    "detection_conditions": "E:\\TRACE_R_experiments\\trace_locked_confirmatory_v65_20260828\\detection\\all_condition_metrics.csv",
-    "detection_aggregate": "E:\\TRACE_R_experiments\\trace_locked_confirmatory_v65_20260828\\detection\\aggregate_metrics.csv",
-    "clean_detection_ceiling": "E:\\TRACE_R_experiments\\trace_locked_confirmatory_v65_20260828\\detection\\clean_ceiling.csv",
-    "fidelity_summary": "E:\\TRACE_R_experiments\\trace_locked_confirmatory_v65_20260828\\fidelity\\all_summary.csv"
+    "detection_conditions": "E:\\TRACE_R_experiments\\trace_locked_confirmatory_v69_20260828\\detection\\all_condition_metrics.csv",
+    "detection_aggregate": "E:\\TRACE_R_experiments\\trace_locked_confirmatory_v69_20260828\\detection\\aggregate_metrics.csv",
+    "clean_detection_ceiling": "E:\\TRACE_R_experiments\\trace_locked_confirmatory_v69_20260828\\detection\\clean_ceiling.csv",
+    "fidelity_summary": "E:\\TRACE_R_experiments\\trace_locked_confirmatory_v69_20260828\\fidelity\\all_summary.csv"
+  },
+  "official_nafnet_correction": {
+    "status": "official_nafnet_selection_frozen_before_test",
+    "frozen_at_utc": "2026-08-28T02:18:38.611433+00:00",
+    "selection_split": "validation only",
+    "test_used_for_selection": false,
+    "selection_criterion": "maximum joint mean validation mAP50; lower epoch breaks ties",
+    "selection_ledger": "E:\\TRACE_R_experiments\\official_nafnet_matched_v68_20260828\\validation\\best_by_val_map.json",
+    "selection_ledger_sha256": "865b6f0e3f69e9234833a9beba6c692f135521bfbc020c55e1e1bc550ecd0059",
+    "checkpoint": "E:\\TRACE_R_experiments\\official_nafnet_matched_v68_20260828\\train\\nafnet_epoch_028.pth",
+    "checkpoint_sha256": "d21aaebf3e4df7e822a568dfef29c5810d19e3e27330db1bc41c607e56313a77",
+    "epoch": 28,
+    "validation_joint_map50": 0.3394386569265586,
+    "official_architecture": "NAFNet width 32; enc_blk_nums [1,1,1,28]; middle_blk_num 1; dec_blk_nums [1,1,1,1]",
+    "official_source": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\third_party\\NAFNet-main\\basicsr\\models\\archs\\NAFNet_arch.py",
+    "official_source_sha256": "4c1ae324f77859f88b0214c8c6d95385c47f55b48b5c2e64eadeb0eec8cc28b0",
+    "released_initialization": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\weights\\nafnet\\NAFNet-GoPro-width32.pth",
+    "released_initialization_sha256": "19394e6155d12ef6371d1d57496f87f0ec88f92bdffa27c0792690722d5d1a5c",
+    "single_restored_image": true,
+    "detector_output_fusion": false,
+    "inference_information": "image only",
+    "detectors": {
+      "ivcnz": {
+        "path": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\runs\\detect\\runs\\yolo11s_sequence_disjoint_v1_20260716\\pothole_clean_80ep\\weights\\best.pt",
+        "sha256": "7d7e24e4e13e85456578b505dcf7ba327ab923d1fbd68fc2127e04766c96b4b9"
+      },
+      "pcm": {
+        "path": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\runs\\detect\\runs\\yolo11s_sequence_disjoint_v1_20260716\\pcm_clean_80ep\\weights\\best.pt",
+        "sha256": "7b6db99cd29da5ed4488d99a0afce2606491222251ce2669592290133562d290"
+      }
+    },
+    "test_source_yaml_sha256": {
+      "ivcnz:motion": "f5ef13e4cec770142ffe45daa769a8608ea10e6ce0fe8127face4f72194a97b8",
+      "ivcnz:defocus": "4fc3ddc09b6bc745b4ed8545d804118293c61f40bf343587364588fdc93a3e91",
+      "ivcnz:lowlight": "d3fed1762fd18ccc5f568a94a6a1abc56d89d97204c1543d408835c0b6957331",
+      "ivcnz:mixed": "5c110ec3ba71887f915a93fed559ac6e6f8e97cb656e4fee2735d0f40c66214f",
+      "pcm:motion": "890c261be32e3dc518812ee1b682168fe3ddfff39e1b188ff6ece8c17ca680b5",
+      "pcm:defocus": "a22c544c04208310e4ea7fb2a6f44f33ee88bd294059c24b3d8e37229ea0837a",
+      "pcm:lowlight": "f8737c6db6f3ffaa9aac03e6f7c05428850387dc24bd44a78d86639c15d31105",
+      "pcm:mixed": "917ddf803c5adb75ebc5866739a9b698fc952cd94d79a0c5320177ace2b7baa5"
+    },
+    "reason": "The inherited ledger used a compact NAF-style diagnostic. The reported NAFNet row now uses the authors' released width-32 architecture.",
+    "inherited_controlled_run": "E:\\TRACE_R_experiments\\trace_locked_confirmatory_v65_20260828",
+    "inherited_controlled_ledger_sha256": "31582f75ed5dff57d3c8e6f68ecf570e4f56882ddc6193586e2a57fc5dd58021",
+    "only_corrected_method": "nafnet",
+    "test_metric_used_for_selection": false
+  },
+  "matched_budget_payload_audit": {
+    "instructir": {
+      "checkpoint_filename": "instructir_epoch_070.pth",
+      "checkpoint_payload_epoch": 32,
+      "optimizer_updates": 4096,
+      "samples_per_epoch": 512,
+      "effective_batch_size": 4
+    },
+    "dfpir": {
+      "checkpoint_filename": "dfpir_epoch_070.pth",
+      "checkpoint_payload_epoch": 32,
+      "optimizer_updates": 4096,
+      "samples_per_epoch": 512,
+      "effective_batch_size": 4
+    },
+    "demoe_auto": {
+      "checkpoint_filename": "demoe_epoch_070.pth",
+      "checkpoint_payload_epoch": 32,
+      "optimizer_updates": 4096,
+      "samples_per_epoch": 512,
+      "effective_batch_size": 4
+    },
+    "demoe_oracle": {
+      "checkpoint_filename": "demoe_epoch_070.pth",
+      "checkpoint_payload_epoch": 32,
+      "optimizer_updates": 4096,
+      "samples_per_epoch": 512,
+      "effective_batch_size": 4
+    }
   }
 }

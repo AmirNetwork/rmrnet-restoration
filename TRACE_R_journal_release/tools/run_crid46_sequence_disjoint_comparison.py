@@ -136,6 +136,17 @@ def parse_args() -> argparse.Namespace:
         help="Root containing the native-resolution comparator outputs.",
     )
     parser.add_argument(
+        "--baseline-override",
+        action="append",
+        default=[],
+        metavar="METHOD=PATH",
+        help=(
+            "Override one comparator image directory while freezing its exact "
+            "path in the validation manifest. Supported methods are nafnet, "
+            "dfpir, demoe_auto, and instructir."
+        ),
+    )
+    parser.add_argument(
         "--detector-provenance",
         default="Sony detector selected on the sequence-disjoint validation split",
         help="Human-readable detector provenance saved in the frozen manifest.",
@@ -213,6 +224,34 @@ def provenance_path(path: Path) -> str:
         return str(resolved.relative_to(ROOT))
     except ValueError:
         return str(resolved)
+
+
+def comparator_sources(
+    baseline_root: Path,
+    overrides: list[str],
+) -> dict[str, Path]:
+    sources = {
+        "nafnet": baseline_root / "nafnet" / "images" / "test",
+        "dfpir": baseline_root / "dfpir" / "images" / "test",
+        "demoe_auto": baseline_root / "demoe_auto" / "images" / "test",
+        "instructir": baseline_root / "instructir_generic" / "images" / "test",
+    }
+    for value in overrides:
+        if "=" not in value:
+            raise ValueError(
+                f"Expected METHOD=PATH for --baseline-override, received {value!r}"
+            )
+        method, raw_path = value.split("=", 1)
+        if method not in sources:
+            raise ValueError(f"Unsupported baseline override method: {method!r}")
+        path = Path(raw_path)
+        sources[method] = (
+            path.resolve() if path.is_absolute() else (ROOT / path).resolve()
+        )
+    for method, path in sources.items():
+        if not path.exists():
+            raise FileNotFoundError(f"{method} comparator directory: {path}")
+    return sources
 
 
 def split_names(split: str, split_root: Path = SPLIT_ROOT) -> list[str]:
@@ -524,6 +563,9 @@ def main() -> None:
         raise FileNotFoundError(args.native_root)
     if not args.metadata_root.exists():
         raise FileNotFoundError(args.metadata_root)
+    comparator_roots = comparator_sources(
+        args.baseline_root, list(args.baseline_override)
+    )
     args.out.mkdir(parents=True, exist_ok=True)
     detector_hash = sha256(args.detector)
     frozen = args.out / "frozen_selection_before_test.json"
@@ -568,6 +610,12 @@ def main() -> None:
             raise RuntimeError("Label root changed after validation selection")
         if args.baseline_root != frozen_baseline_root:
             raise RuntimeError("Baseline root changed after validation selection")
+        frozen_sources = {
+            method: (ROOT / path).resolve()
+            for method, path in selection.get("baseline_sources", {}).items()
+        }
+        if frozen_sources and comparator_roots != frozen_sources:
+            raise RuntimeError("Per-method baseline sources changed after validation selection")
         if args.rmr_metadata_mode != selection.get("rmr_metadata_mode", "provided"):
             raise RuntimeError("RMR metadata mode changed after validation selection")
         split = "test"
@@ -575,10 +623,7 @@ def main() -> None:
         methods = {
             "raw": args.native_root,
             chosen: RMR_CANDIDATES[chosen],
-            "nafnet": args.baseline_root / "nafnet" / "images" / "test",
-            "dfpir": args.baseline_root / "dfpir" / "images" / "test",
-            "demoe_auto": args.baseline_root / "demoe_auto" / "images" / "test",
-            "instructir": args.baseline_root / "instructir_generic" / "images" / "test",
+            **comparator_roots,
         }
     else:
         split = "val"
@@ -587,10 +632,7 @@ def main() -> None:
             if args.rmr_only
             else {
                 "raw": args.native_root,
-                "nafnet": args.baseline_root / "nafnet" / "images" / "test",
-                "dfpir": args.baseline_root / "dfpir" / "images" / "test",
-                "demoe_auto": args.baseline_root / "demoe_auto" / "images" / "test",
-                "instructir": args.baseline_root / "instructir_generic" / "images" / "test",
+                **comparator_roots,
                 **candidate_grid,
             }
         )
@@ -661,7 +703,6 @@ def main() -> None:
                     ),
                     "rmr_checkpoint": provenance_path(checkpoint) if checkpoint is not None else None,
                     "rmr_checkpoint_sha256": sha256(checkpoint) if checkpoint is not None else None,
-                    "rmr_full_output": provenance_path(rmr_full),
                     "rmr_metadata": (
                         "unavailable control (all 82 packet channels zeroed)"
                         if args.rmr_metadata_mode == "unavailable"
@@ -682,6 +723,11 @@ def main() -> None:
                     "split_root": provenance_path(args.split_root),
                     "label_root": provenance_path(args.label_root),
                     "baseline_root": provenance_path(args.baseline_root),
+                    "baseline_sources": {
+                        method: provenance_path(path)
+                        for method, path in comparator_roots.items()
+                    },
+                    "rmr_full_output": provenance_path(rmr_full),
                     "rmr_metadata_sha256": {
                         Path(name).stem: sha256(
                             args.metadata_root / f"{Path(name).stem}.json"
@@ -713,6 +759,11 @@ def main() -> None:
                     "split_root": provenance_path(args.split_root),
                     "label_root": provenance_path(args.label_root),
                     "baseline_root": provenance_path(args.baseline_root),
+                    "baseline_sources": {
+                        method: provenance_path(path)
+                        for method, path in comparator_roots.items()
+                    },
+                    "rmr_full_output": provenance_path(rmr_full),
                     "rmr_metadata_sha256": {
                         Path(name).stem: sha256(
                             args.metadata_root / f"{Path(name).stem}.json"

@@ -3,16 +3,16 @@
 \caption{Native-resolution CRID temporal field evaluation (13 frames, 49 annotated defects).}
 \label{tab:crid}
 \scriptsize
-\begin{tabular}{lrrrr}
+\begin{tabular}{lrrr}
 \toprule
-Method & AP@.10 & AP@.50 & Mean AP & GT coverage \\
+Method & Pooled AP50 & AP10 sensitivity & GT coverage \\
 \midrule
-Native image & 0.516 & 0.446 & 0.481 & 0.633 \\
-NAFNet & 0.559 & 0.474 & 0.516 & 0.531 \\
-InstructIR & 0.542 & 0.442 & 0.492 & 0.612 \\
-DFPIR & 0.550 & 0.452 & 0.501 & 0.612 \\
-DeMoE-auto & 0.551 & 0.452 & 0.502 & 0.592 \\
-TRACE-R & \textbf{0.577} & \textbf{0.507} & \textbf{0.542} & 0.633 \\
+Native image & 0.446 & 0.516 & 0.633 \\
+NAFNet & 0.488 & \textbf{0.589} & 0.612 \\
+InstructIR & 0.442 & 0.542 & 0.612 \\
+DFPIR & 0.452 & 0.550 & 0.612 \\
+DeMoE-auto & 0.452 & 0.551 & 0.592 \\
+TRACE-R & \textbf{0.507} & 0.577 & 0.633 \\
 \bottomrule
 \end{tabular}
 \vspace{1mm}

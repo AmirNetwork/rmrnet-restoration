@@ -1,0 +1,31 @@
+{
+  "status": "complete",
+  "criterion": "maximum joint mean validation mAP50; lower epoch breaks ties",
+  "test_split_used": false,
+  "best_by_val_map50": {
+    "nafnet": {
+      "model": "nafnet",
+      "epoch": 28,
+      "checkpoint": "E:\\TRACE_R_experiments\\official_nafnet_matched_v68_20260828\\train\\nafnet_epoch_028.pth",
+      "ivcnz_mean_map50": 0.48356986971843074,
+      "pcm_mean_map50": 0.1953074441346865,
+      "joint_mean_map50": 0.3394386569265586,
+      "stage": "full_validation",
+      "test_split_used": false,
+      "demoe_task": "not_applicable",
+      "rmrp_output_stage": "not_applicable",
+      "rmrp_residual_strength": null,
+      "rmrp_prompt_router": "not_applicable",
+      "rmrp_prompt_delta_scale_override": null,
+      "rmrp_sensor_route_mode": "not_applicable",
+      "rmrp_compound_motion_blend": null,
+      "rmrp_demoe_route_acceptance": "not_applicable",
+      "rmrp_backbone_route_mode": "not_applicable",
+      "rmrp_semantic_adapter_gain": null,
+      "rmrp_semantic_adapter_acceptance": "not_applicable",
+      "rmrp_compound_metadata_acceptance": null
+    }
+  },
+  "residual_policy_source": "skipped",
+  "restored_validation_images_retained": false
+}

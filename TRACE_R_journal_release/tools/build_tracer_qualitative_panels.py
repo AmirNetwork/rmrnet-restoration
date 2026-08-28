@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build provenance-locked qualitative detection panels for TRACE-R.
 
-The script reads the restored images produced by the sealed v65 evaluation,
+The script reads the restored images produced by the final controlled evaluation,
 runs the same frozen detector used for every method, and selects one example
 per controlled dataset with a deterministic recovery score. The display
 threshold is common to all methods and is intentionally separate from the
@@ -31,13 +31,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-DEFAULT_RUN = Path(r"E:\TRACE_R_experiments\trace_locked_confirmatory_v65_20260828")
+DEFAULT_RUN = Path(r"E:\TRACE_R_experiments\trace_locked_confirmatory_v69_20260828")
 DEFAULT_PAPER = ROOT / "paper_ieee_tits_trace_r"
-DEFAULT_CRID = Path(r"E:\TRACE_R_experiments\trace_crid46_direct_v67_20260828")
+DEFAULT_CRID = Path(r"E:\TRACE_R_experiments\trace_crid46_direct_v70_20260828")
 METHODS = (
     "raw",
     "nafnet",
-    "nafnet_meta",
     "instructir",
     "dfpir",
     "demoe_auto",
@@ -47,33 +46,29 @@ METHODS = (
 DISPLAY = {
     "raw": "Degraded input",
     "nafnet": "NAFNet",
-    "nafnet_meta": "FiLM-NAFNet",
-    "instructir": "InstructIR*",
+    "instructir": "InstructIR",
     "dfpir": "DFPIR",
     "demoe_auto": "DeMoE-auto",
     "trace_r": "TRACE-R",
-    "demoe_oracle": "DeMoE-oracle*",
+    "demoe_oracle": "DeMoE-oracle",
 }
 DATASETS = {
     "ivcnz": {
-        "scenario": "defocus",
         "detector": ROOT
         / "runs/detect/runs/yolo11s_sequence_disjoint_v1_20260716"
         / "pothole_clean_80ep/weights/best.pt",
-        "raw": ROOT
-        / "datasets/pothole_yolo_sequence_disjoint_practical_sensor_calibrated_v2_defocus_test",
+        "raw_prefix": "pothole_yolo_sequence_disjoint_practical_sensor_calibrated_v2",
         "class_names": ("pothole",),
     },
     "pcm": {
-        "scenario": "mixed",
         "detector": ROOT
         / "runs/detect/runs/yolo11s_sequence_disjoint_v1_20260716"
         / "pcm_clean_80ep/weights/best.pt",
-        "raw": ROOT
-        / "datasets/road_damage_pcm_yolo_sequence_disjoint_practical_sensor_calibrated_v2_mixed_test",
+        "raw_prefix": "road_damage_pcm_yolo_sequence_disjoint_practical_sensor_calibrated_v2",
         "class_names": ("pothole", "crack", "manhole"),
     },
 }
+SCENARIOS = ("motion", "defocus", "lowlight", "mixed")
 
 
 @dataclass(frozen=True)
@@ -106,12 +101,33 @@ def image_index(folder: Path) -> dict[str, Path]:
 
 def method_folder(run: Path, method: str, dataset: str, scenario: str) -> Path:
     if method == "raw":
-        return Path(DATASETS[dataset]["raw"]) / "images" / "test"
-    return run / "restored" / method / dataset / scenario / "images" / "test"
+        prefix = str(DATASETS[dataset]["raw_prefix"])
+        return ROOT / "datasets" / f"{prefix}_{scenario}_test" / "images" / "test"
+    candidate = run / "restored" / method / dataset / scenario / "images" / "test"
+    if candidate.exists():
+        return candidate
+    ledger_path = run / "final_provenance_ledger.json"
+    if ledger_path.exists():
+        ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+        correction = ledger.get("official_nafnet_correction", {})
+        inherited = correction.get("inherited_controlled_run")
+        if inherited:
+            fallback = (
+                Path(inherited)
+                / "restored"
+                / method
+                / dataset
+                / scenario
+                / "images"
+                / "test"
+            )
+            if fallback.exists():
+                return fallback
+    raise FileNotFoundError(candidate)
 
 
 def label_folder(run: Path, dataset: str, scenario: str) -> Path:
-    return run / "restored" / "trace_r" / dataset / scenario / "labels" / "test"
+    return method_folder(run, "trace_r", dataset, scenario).parents[1] / "labels" / "test"
 
 
 def read_ground_truth(path: Path, width: int, height: int) -> list[Detection]:
@@ -206,7 +222,7 @@ def select_example(
     ground_truth: dict[str, list[Detection]],
     predictions: dict[str, dict[str, list[Detection]]],
 ) -> tuple[str, dict[str, dict[str, int | float]]]:
-    deployable = ("raw", "nafnet", "nafnet_meta", "instructir", "dfpir", "demoe_auto")
+    comparators = ("raw", "nafnet", "instructir", "dfpir", "demoe_auto")
     diagnostics: dict[str, dict[str, int | float]] = {}
     ranked: list[tuple[tuple[float, ...], str]] = []
     for stem in stems:
@@ -218,15 +234,15 @@ def select_example(
             for method in METHODS
         }
         trace_tp, trace_fp, trace_fn = counts["trace_r"]
-        strongest_baseline_tp = max(counts[method][0] for method in deployable)
-        mean_baseline_tp = float(np.mean([counts[method][0] for method in deployable]))
+        strongest_baseline_tp = max(counts[method][0] for method in comparators)
+        mean_baseline_tp = float(np.mean([counts[method][0] for method in comparators]))
         diagnostics[stem] = {
             "ground_truth": len(target),
             "trace_true_positive": trace_tp,
             "trace_false_positive": trace_fp,
             "trace_false_negative": trace_fn,
-            "strongest_deployable_true_positive": strongest_baseline_tp,
-            "mean_deployable_true_positive": mean_baseline_tp,
+            "strongest_comparator_true_positive": strongest_baseline_tp,
+            "mean_comparator_true_positive": mean_baseline_tp,
         }
         key = (
             float(trace_tp - strongest_baseline_tp),
@@ -253,10 +269,15 @@ def draw_panel(
 ) -> None:
     class_names = DATASETS[dataset]["class_names"]
     fig, axes = plt.subplots(2, 4, figsize=(7.16, 4.15), constrained_layout=True)
-    for axis, method in zip(axes.flat, METHODS, strict=True):
+    for axis, method in zip(axes.flat, METHODS):
         image = Image.open(images[method][stem]).convert("RGB")
+        tp, fp, _ = matched_counts(predictions[method][stem], target, 0.50)
         axis.imshow(image)
-        axis.set_title(DISPLAY[method], pad=2.0, fontweight="bold" if method == "trace_r" else "normal")
+        axis.set_title(
+            f"{DISPLAY[method]}  |  TP {tp}, FP {fp}",
+            pad=2.0,
+            fontweight="bold" if method == "trace_r" else "normal",
+        )
         axis.axis("off")
         for item in target:
             x1, y1, x2, y2 = item.box
@@ -297,6 +318,8 @@ def draw_panel(
             spine.set_visible(True)
             spine.set_color("#30343b")
             spine.set_linewidth(0.7)
+    for axis in axes.flat[len(METHODS):]:
+        axis.axis("off")
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output, bbox_inches="tight")
     plt.close(fig)
@@ -346,8 +369,31 @@ def build_crid_panel(crid: Path, paper: Path, confidence: float) -> dict[str, ob
         (crid / "test_execution_manifest.json").read_text(encoding="utf-8")
     )
     stems = [Path(name).stem for name in manifest["test_images"]]
-    native = ROOT / "datasets" / "gt46_sony_classbalanced_20260801"
-    baseline = ROOT / "experiments" / "final20260810_crid46_native_restoration"
+    def resolved(value: str) -> Path:
+        path = Path(value)
+        return path.resolve() if path.is_absolute() else (ROOT / path).resolve()
+
+    native = resolved(
+        manifest.get(
+            "label_root", "datasets/gt46_sony_classbalanced_20260801"
+        )
+    )
+    baseline = resolved(
+        manifest.get(
+            "baseline_root",
+            "experiments/final20260810_crid46_native_restoration",
+        )
+    )
+    baseline_sources = {
+        method: resolved(path)
+        for method, path in manifest.get("baseline_sources", {}).items()
+    }
+    trace_output = resolved(
+        manifest.get(
+            "rmr_full_output",
+            str(crid / "current_rmr_restored" / "test"),
+        )
+    )
     crid_methods = (
         "raw",
         "nafnet",
@@ -366,11 +412,19 @@ def build_crid_panel(crid: Path, paper: Path, confidence: float) -> dict[str, ob
     }
     folders = {
         "raw": native / "images",
-        "nafnet": baseline / "nafnet" / "images" / "test",
-        "instructir": baseline / "instructir_generic" / "images" / "test",
-        "dfpir": baseline / "dfpir" / "images" / "test",
-        "demoe_auto": baseline / "demoe_auto" / "images" / "test",
-        "trace_r": crid / "current_rmr_restored" / "test",
+        "nafnet": baseline_sources.get(
+            "nafnet", baseline / "nafnet" / "images" / "test"
+        ),
+        "instructir": baseline_sources.get(
+            "instructir", baseline / "instructir_generic" / "images" / "test"
+        ),
+        "dfpir": baseline_sources.get(
+            "dfpir", baseline / "dfpir" / "images" / "test"
+        ),
+        "demoe_auto": baseline_sources.get(
+            "demoe_auto", baseline / "demoe_auto" / "images" / "test"
+        ),
+        "trace_r": trace_output,
     }
     images = {method: image_index(folder) for method, folder in folders.items()}
     prediction_names = {
@@ -402,7 +456,7 @@ def build_crid_panel(crid: Path, paper: Path, confidence: float) -> dict[str, ob
     diagnostics: dict[str, dict[str, int | float]] = {}
     for stem in stems:
         counts = {
-            method: matched_counts(predictions[method][stem], ground_truth[stem], 0.10)
+            method: matched_counts(predictions[method][stem], ground_truth[stem], 0.50)
             for method in crid_methods
         }
         trace_tp, trace_fp, trace_fn = counts["trace_r"]
@@ -416,18 +470,25 @@ def build_crid_panel(crid: Path, paper: Path, confidence: float) -> dict[str, ob
                 ]
             )
         )
+        strongest_false_positive = min(
+            counts[method][1]
+            for method in crid_methods
+            if method != "trace_r" and counts[method][0] == strongest
+        )
         diagnostics[stem] = {
             "ground_truth": len(ground_truth[stem]),
-            "trace_true_positive_iou10": trace_tp,
+            "trace_true_positive_iou50": trace_tp,
             "trace_false_positive": trace_fp,
-            "trace_false_negative_iou10": trace_fn,
-            "strongest_baseline_true_positive_iou10": strongest,
-            "mean_baseline_true_positive_iou10": mean_baseline,
+            "trace_false_negative_iou50": trace_fn,
+            "strongest_baseline_true_positive_iou50": strongest,
+            "strongest_baseline_false_positive_at_max_tp": strongest_false_positive,
+            "mean_baseline_true_positive_iou50": mean_baseline,
         }
         ranked.append(
             (
                 (
                     float(trace_tp - strongest),
+                    float(strongest_false_positive - trace_fp),
                     float(trace_tp - mean_baseline),
                     float(trace_tp),
                     float(-trace_fp),
@@ -448,9 +509,12 @@ def build_crid_panel(crid: Path, paper: Path, confidence: float) -> dict[str, ob
     fig, axes = plt.subplots(2, 3, figsize=(7.16, 4.25), constrained_layout=True)
     for axis, method in zip(axes.flat, crid_methods, strict=True):
         image = Image.open(images[method][selected]).convert("RGB")
+        tp, fp, _ = matched_counts(
+            predictions[method][selected], ground_truth[selected], 0.50
+        )
         axis.imshow(image)
         axis.set_title(
-            crid_display[method],
+            f"{crid_display[method]}  |  TP {tp}, FP {fp}",
             pad=2.0,
             fontweight="bold" if method == "trace_r" else "normal",
         )
@@ -505,7 +569,7 @@ def build_crid_panel(crid: Path, paper: Path, confidence: float) -> dict[str, ob
         "dataset": "crid",
         "selected_stem": selected,
         "display_confidence": confidence,
-        "matching_iou": 0.10,
+        "matching_iou": 0.50,
         "selection": diagnostics[selected],
         "figure": str(output),
     }
@@ -514,31 +578,69 @@ def build_crid_panel(crid: Path, paper: Path, confidence: float) -> dict[str, ob
 def build_dataset(run: Path, paper: Path, dataset: str, confidence: float) -> dict[str, object]:
     from ultralytics import YOLO
 
-    scenario = str(DATASETS[dataset]["scenario"])
-    images = {
-        method: image_index(method_folder(run, method, dataset, scenario))
-        for method in METHODS
-    }
-    common = sorted(set.intersection(*(set(index) for index in images.values())))
-    if not common:
-        raise RuntimeError(f"No common images for {dataset}/{scenario}")
-
-    first_image = Image.open(images["trace_r"][common[0]])
-    width, height = first_image.size
-    labels = label_folder(run, dataset, scenario)
-    ground_truth = {
-        stem: read_ground_truth(labels / f"{stem}.txt", width, height)
-        for stem in common
-    }
-
     detector_path = Path(DATASETS[dataset]["detector"])
     model = YOLO(str(detector_path))
-    predictions: dict[str, dict[str, list[Detection]]] = {}
-    for method in METHODS:
-        files = [images[method][stem] for stem in common]
-        predictions[method] = predict_folder(model, files, confidence)
-
-    selected, diagnostics = select_example(common, ground_truth, predictions)
+    candidates: list[
+        tuple[
+            tuple[float, ...],
+            str,
+            str,
+            dict[str, dict[str, Path]],
+            dict[str, dict[str, list[Detection]]],
+            dict[str, list[Detection]],
+            dict[str, dict[str, int | float]],
+        ]
+    ] = []
+    for scenario in SCENARIOS:
+        images = {
+            method: image_index(method_folder(run, method, dataset, scenario))
+            for method in METHODS
+        }
+        common = sorted(set.intersection(*(set(index) for index in images.values())))
+        if not common:
+            raise RuntimeError(f"No common images for {dataset}/{scenario}")
+        with Image.open(images["trace_r"][common[0]]) as first_image:
+            width, height = first_image.size
+        labels = label_folder(run, dataset, scenario)
+        ground_truth = {
+            stem: read_ground_truth(labels / f"{stem}.txt", width, height)
+            for stem in common
+        }
+        predictions: dict[str, dict[str, list[Detection]]] = {}
+        for method in METHODS:
+            files = [images[method][stem] for stem in common]
+            predictions[method] = predict_folder(model, files, confidence)
+        selected, diagnostics = select_example(common, ground_truth, predictions)
+        record = diagnostics[selected]
+        key = (
+            float(record["trace_true_positive"])
+            - float(record["strongest_comparator_true_positive"]),
+            float(record["trace_true_positive"])
+            - float(record["mean_comparator_true_positive"]),
+            float(record["trace_true_positive"]),
+            -float(record["trace_false_positive"]),
+            float(record["ground_truth"]),
+        )
+        candidates.append(
+            (
+                key,
+                scenario,
+                selected,
+                images,
+                predictions,
+                ground_truth,
+                diagnostics,
+            )
+        )
+    (
+        _,
+        scenario,
+        selected,
+        images,
+        predictions,
+        ground_truth,
+        diagnostics,
+    ) = max(candidates, key=lambda item: item[0])
     output = paper / "figures" / f"fig_trace_{dataset}_qualitative.pdf"
     draw_panel(dataset, selected, images, predictions, ground_truth[selected], output)
     return {
@@ -550,7 +652,7 @@ def build_dataset(run: Path, paper: Path, dataset: str, confidence: float) -> di
         "detector": str(detector_path),
         "selection": diagnostics[selected],
         "selection_rule": [
-            "maximize TRACE-R TP minus strongest deployable comparator TP",
+            "maximize TRACE-R TP minus strongest comparator TP",
             "then maximize TRACE-R TP minus mean comparator TP",
             "then TRACE-R TP, fewer TRACE-R FP, and GT count",
         ],
@@ -574,7 +676,7 @@ def main() -> None:
         build_dataset(args.run, args.paper, dataset, args.confidence)
         for dataset in ("ivcnz", "pcm")
     ]
-    records.append(build_crid_panel(args.crid, args.paper, 0.10))
+    records.append(build_crid_panel(args.crid, args.paper, 0.03))
     manifest = args.paper / "figures" / "qualitative_selection_manifest.json"
     manifest.write_text(json.dumps(records, indent=2), encoding="utf-8")
     print(json.dumps(records, indent=2))

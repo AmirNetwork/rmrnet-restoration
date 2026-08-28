@@ -1,21 +1,21 @@
 [
   {
     "dataset": "ivcnz",
-    "scenario": "defocus",
-    "selected_stem": "img-1097",
+    "scenario": "mixed",
+    "selected_stem": "img-1185",
     "display_confidence": 0.25,
     "matching_iou": 0.5,
     "detector": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\runs\\detect\\runs\\yolo11s_sequence_disjoint_v1_20260716\\pothole_clean_80ep\\weights\\best.pt",
     "selection": {
-      "ground_truth": 1,
-      "trace_true_positive": 1,
-      "trace_false_positive": 0,
-      "trace_false_negative": 0,
-      "strongest_deployable_true_positive": 0,
-      "mean_deployable_true_positive": 0.0
+      "ground_truth": 17,
+      "trace_true_positive": 2,
+      "trace_false_positive": 8,
+      "trace_false_negative": 15,
+      "strongest_comparator_true_positive": 1,
+      "mean_comparator_true_positive": 1.0
     },
     "selection_rule": [
-      "maximize TRACE-R TP minus strongest deployable comparator TP",
+      "maximize TRACE-R TP minus strongest comparator TP",
       "then maximize TRACE-R TP minus mean comparator TP",
       "then TRACE-R TP, fewer TRACE-R FP, and GT count"
     ],
@@ -23,21 +23,21 @@
   },
   {
     "dataset": "pcm",
-    "scenario": "mixed",
-    "selected_stem": "vlcsnap-00080",
+    "scenario": "motion",
+    "selected_stem": "vlcsnap-00059",
     "display_confidence": 0.25,
     "matching_iou": 0.5,
     "detector": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\runs\\detect\\runs\\yolo11s_sequence_disjoint_v1_20260716\\pcm_clean_80ep\\weights\\best.pt",
     "selection": {
-      "ground_truth": 2,
+      "ground_truth": 3,
       "trace_true_positive": 2,
       "trace_false_positive": 0,
-      "trace_false_negative": 0,
-      "strongest_deployable_true_positive": 1,
-      "mean_deployable_true_positive": 0.5
+      "trace_false_negative": 1,
+      "strongest_comparator_true_positive": 1,
+      "mean_comparator_true_positive": 0.6
     },
     "selection_rule": [
-      "maximize TRACE-R TP minus strongest deployable comparator TP",
+      "maximize TRACE-R TP minus strongest comparator TP",
       "then maximize TRACE-R TP minus mean comparator TP",
       "then TRACE-R TP, fewer TRACE-R FP, and GT count"
     ],
@@ -45,16 +45,17 @@
   },
   {
     "dataset": "crid",
-    "selected_stem": "Cam1_2026-06-09_14-59-01_capt1795_1796",
-    "display_confidence": 0.1,
-    "matching_iou": 0.1,
+    "selected_stem": "Cam1_2026-06-09_14-58-20_capt1460_1461",
+    "display_confidence": 0.03,
+    "matching_iou": 0.5,
     "selection": {
-      "ground_truth": 7,
-      "trace_true_positive_iou10": 3,
-      "trace_false_positive": 4,
-      "trace_false_negative_iou10": 4,
-      "strongest_baseline_true_positive_iou10": 3,
-      "mean_baseline_true_positive_iou10": 2.2
+      "ground_truth": 3,
+      "trace_true_positive_iou50": 2,
+      "trace_false_positive": 1,
+      "trace_false_negative_iou50": 1,
+      "strongest_baseline_true_positive_iou50": 2,
+      "strongest_baseline_false_positive_at_max_tp": 2,
+      "mean_baseline_true_positive_iou50": 1.2
     },
     "figure": "paper_ieee_tits_trace_r\\figures\\fig_trace_crid_qualitative.pdf"
   }

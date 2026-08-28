@@ -18,6 +18,8 @@ third_party/
   DeMoE/
   DFPIR/
   InstructIR/
+weights/
+  nafnet/NAFNet-GoPro-width32.pth
 ```
 
 Each paired restoration sample has a degraded image, clean target, YOLO label,
@@ -74,8 +76,9 @@ python tools\run_tracer_locked_confirmatory.py `
 
 The confirmatory runner writes a provenance ledger before opening test data and
 refuses to change the checkpoint after that freeze. Every method produces one
-restored image. `DeMoE-oracle` and instructed InstructIR are labelled upper-bound
-inputs and are not used to define the deployable ranking.
+restored image. DeMoE-oracle is a non-deployable upper bound. InstructIR and
+DFPIR are condition-informed controls in the synthetic study and are identified
+as such in the paper.
 
 ## 4. CRID temporal evaluation
 
@@ -86,7 +89,7 @@ then run validation before the later temporal block:
 python tools\run_crid46_sequence_disjoint_comparison.py `
   --out E:\TRACE_R_experiments\trace_crid `
   --detector PATH_TO_YOLO26_ROAD_DAMAGE.pt `
-  --current-checkpoint PATH_TO_TRACE_R.pth `
+  --rmr-checkpoint PATH_TO_TRACE_R.pth `
   --metadata-root PATH_TO_CRID_METADATA
 
 python tools\run_crid46_sequence_disjoint_comparison.py `

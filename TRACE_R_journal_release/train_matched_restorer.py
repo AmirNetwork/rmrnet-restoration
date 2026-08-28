@@ -57,7 +57,7 @@ from baselines.demoe_adapter import DeMoEAdapter, demoe_task_from_scenario
 from baselines.dfpir_adapter import DFPIRAdapter
 from baselines.instructir_adapter import InstructIRAdapter
 from baselines.nafnet_metadata import MetadataNAFNetRoad
-from baselines.nafnet_road import NAFNetRoad
+from baselines.nafnet_road import CompactNAFNetRoad, NAFNetRoad
 from models.rmrnet import RMRP
 from models.rmrp_metadata_demoe import RMRPMetadataDeMoE
 from models.rmrp_prompted_dfpir import RMRPPromptedDFPIR
@@ -538,7 +538,17 @@ def build_dataset(
 
 def average_state_dicts(paths: Sequence[Path]) -> tuple[dict[str, torch.Tensor], dict[str, Any]]:
     payloads = [torch.load(path, map_location="cpu", weights_only=False) for path in paths]
-    states = [payload.get("model", payload) for payload in payloads]
+    states = []
+    for payload in payloads:
+        if not isinstance(payload, dict):
+            states.append(payload)
+            continue
+        state = payload.get("model")
+        if not isinstance(state, dict):
+            state = payload.get("params_ema")
+        if not isinstance(state, dict):
+            state = payload.get("params")
+        states.append(state if isinstance(state, dict) else payload)
     if not all(isinstance(state, dict) for state in states):
         raise TypeError("Every initialization must contain a state dictionary")
     shared = set(states[0])
@@ -960,15 +970,35 @@ class TrainableRestorer(nn.Module):
                 )
         elif kind == "nafnet":
             averaged, payload = average_state_dicts(init_paths)
-            width = int(payload.get("arch", {}).get("width", 32))
-            self.model = NAFNetRoad(width=width).to(device)
-            incompatible = self.model.load_state_dict(averaged, strict=False)
-            self.arch = {"model": kind, "width": width}
+            source_arch = dict(payload.get("arch", {}))
+            official = (
+                str(source_arch.get("variant", "")).startswith("official_eccv2022")
+                or "intro.weight" in averaged
+            )
+            if official:
+                self.model = NAFNetRoad(
+                    width=int(source_arch.get("width", 32)),
+                    enc_blk_nums=source_arch.get("enc_blk_nums", (1, 1, 1, 28)),
+                    middle_blk_num=int(source_arch.get("middle_blk_num", 1)),
+                    dec_blk_nums=source_arch.get("dec_blk_nums", (1, 1, 1, 1)),
+                ).to(device)
+                incompatible = self.model.load_state_dict(averaged, strict=True)
+                self.arch = {"model": kind, **self.model.architecture}
+            else:
+                width = int(source_arch.get("width", 32))
+                self.model = CompactNAFNetRoad(width=width).to(device)
+                incompatible = self.model.load_state_dict(averaged, strict=True)
+                self.arch = {
+                    "model": kind,
+                    "variant": "legacy_compact_naf_style",
+                    "width": width,
+                }
             self.load_report.update(
                 {
                     "missing_keys": list(incompatible.missing_keys),
                     "unexpected_keys": list(incompatible.unexpected_keys),
                     "model_soup_members": len(init_paths),
+                    "faithful_official_nafnet": official,
                 }
             )
         elif kind == "nafnet_meta":
@@ -2178,9 +2208,16 @@ def main() -> None:
     # PCGrad stores and projects unscaled per-domain gradients. Running that
     # small calibration path in FP32 avoids mixing GradScaler state across the
     # two independently accumulated detector objectives.
+    # The released width-32 NAFNet contains a 28-block high-width stage. On
+    # consumer GPUs its normalized residual stream can overflow FP16 during
+    # task-loss adaptation even though the same checkpoint is finite in FP32.
+    # Keep this baseline in FP32, as in its reference implementation. The data,
+    # objective, effective batch, scheduler, and optimizer-update budget remain
+    # matched to the other restorers.
     use_amp = (
         device.type == "cuda"
         and not uses_dfpir_backbone
+        and args.model != "nafnet"
         and not args.dataset_gradient_surgery
     )
     # Dense detector-logit distillation can overflow the default 2**16 AMP
