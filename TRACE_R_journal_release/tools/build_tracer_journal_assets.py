@@ -171,7 +171,7 @@ def build_controlled_table(aggregate: dict[str, dict[str, str]]) -> str:
             name = DISPLAY[method]
         rows.append(" & ".join([name, *rendered]))
     return latex_table(
-        "Sealed controlled-test detection after validation-only model selection.",
+        "Sealed controlled-test detection. Dataset scores average four corruption families; Joint averages the two datasets.",
         "tab:controlled_summary",
         "lrrrrrr",
         (
@@ -285,9 +285,9 @@ def build_fidelity_table(fidelity_rows: list[dict[str, str]]) -> str:
 
 def build_control_table(control_rows: list[dict[str, str]]) -> str:
     display = {
-        "aligned": "Aligned packet",
+        "aligned": "Aligned record",
         "unavailable": "All groups unavailable",
-        "wrong_condition": "Wrong-condition packet",
+        "wrong_condition": "Inconsistent record",
     }
     rows = []
     for row in control_rows:
@@ -301,13 +301,13 @@ def build_control_table(control_rows: list[dict[str, str]]) -> str:
             rendered = [rf"\textbf{{{value}}}" for value in rendered]
         rows.append(" & ".join([display[row["control"]], *rendered]))
     return latex_table(
-        "Validation-only intervention on TRACE-R's capture packet.",
+        "Validation-only intervention on TRACE-R's capture record.",
         "tab:metadata_controls",
         "lrrr",
-        r"Packet supplied at inference & IVCNZ mAP50 & PCM mAP50 & Joint mAP50",
+        r"Capture record at inference & IVCNZ mAP50 & PCM mAP50 & Joint mAP50",
         rows,
         wide=False,
-        note="Only the packet changes; images, model weights, and frozen detectors remain fixed.",
+        note="Only the capture record changes; images, model weights, and frozen detectors remain fixed.",
     )
 
 
@@ -662,14 +662,21 @@ def main() -> None:
     # exist in a working tree, but they must never enter the final evidence set.
     outputs = [
         tables / "table_controlled_summary.tex",
+        tables / "table_inference_inputs.tex",
         tables / "table_condition_results.tex",
         tables / "table_fidelity.tex",
         tables / "table_metadata_controls.tex",
         tables / "table_crid.tex",
         tables / "table_training_audit.tex",
+        tables / "table_architecture_audit.tex",
         figures / "fig_trace_architecture.pdf",
         figures / "fig_trace_controlled_results.pdf",
         figures / "fig_trace_crid_ap.pdf",
+        figures / "fig_trace_ivcnz_qualitative.pdf",
+        figures / "fig_trace_pcm_qualitative.pdf",
+        figures / "fig_trace_crid_qualitative.pdf",
+        figures / "fig_trace_crid_collection.pdf",
+        figures / "qualitative_selection_manifest.json",
     ]
     manifest = {
         "status": "paper_assets_complete",

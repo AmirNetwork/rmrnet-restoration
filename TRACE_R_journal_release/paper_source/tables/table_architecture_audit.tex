@@ -1,0 +1,17 @@
+\begin{table*}[!t]
+\centering
+\caption{Architectures used in the matched restoration comparison.}
+\label{tab:architecture_audit}
+\scriptsize
+\begin{tabular}{lp{0.55\textwidth}rr}
+\toprule
+Method & Upstream configuration retained & Image-model parameters & Load coverage \\
+\midrule
+NAFNet & Width 32; encoder depths $(1,1,1,28)$; one middle block; decoder depths $(1,1,1,1)$ & 17.1 M & Complete \\
+InstructIR & Width 32; encoder depths $(2,2,4,8)$; four middle blocks; decoder depths $(2,2,2,2)$; published language head & 15.8 M & Complete \\
+DFPIR & Width 48; transformer depths $(4,6,6,8)$; four refinement blocks; CLIP ViT-B/32 degradation prompt & 31.1 M & 590/590 \\
+DeMoE & Width 32; encoder/decoder depths $(2,2,2,2)$; two middle blocks; five experts with top-one routing & 20.2 M & Complete \\
+TRACE-R & Same DeMoE backbone plus identity-initialized capture-state adapters & 20.5 M & Complete \\
+\bottomrule
+\end{tabular}
+\end{table*}

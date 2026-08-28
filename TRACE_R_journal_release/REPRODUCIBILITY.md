@@ -15,9 +15,9 @@ runs/detect/runs/yolo11s_sequence_disjoint_v1_20260716/
   pothole_clean_80ep/weights/best.pt
   pcm_clean_80ep/weights/best.pt
 third_party/
-  DeMoE/
-  DFPIR/
-  InstructIR/
+  DeMoE-main/
+  DFPIR-main/
+  InstructIR-main/
 weights/
   nafnet/NAFNet-GoPro-width32.pth
 ```
@@ -98,7 +98,9 @@ python tools\run_crid46_sequence_disjoint_comparison.py `
 
 The first command freezes the residual strength on the earlier 12-frame block.
 The second applies that fixed choice once to the later 13-frame block. Native
-4752x3168 coordinates are preserved and detector outputs are not fused.
+4752x3168 coordinates are preserved and detector outputs are not fused. TRACE-R
+uses the same jointly trained IVCNZ--PCM checkpoint as the controlled study; no
+CRID image, telemetry record, or annotation updates its weights.
 
 ## 5. Paper assets
 

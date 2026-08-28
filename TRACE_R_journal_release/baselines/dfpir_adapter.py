@@ -42,6 +42,56 @@ DFPIR_PROMPTS = {
 }
 
 
+_LEGACY_CHECKPOINT_ATTENTION_SUFFIXES = (".attn1", ".attn2", ".attn3")
+_LEGACY_CHECKPOINT_ATTENTION_MODULES = (
+    "encoder_shuffle_channel1.select_attn",
+    "encoder_shuffle_channel2.select_attn",
+    "encoder_shuffle_channel3.select_attn",
+    "latent_shuffle_channel.select_attn",
+)
+
+
+def load_official_dfpir_state(
+    model: nn.Module, state_dict: dict[str, torch.Tensor]
+) -> dict[str, object]:
+    """Apply the released DFPIR checkpoint with source-native key filtering.
+
+    The official DFPIR evaluation script filters a released checkpoint against
+    the current model state before loading. The published five-degradation
+    checkpoint covers every tensor used by the current source, but also retains
+    twelve obsolete ``attn1``--``attn3`` scalars from an earlier attention
+    variant; the current source uses ``attn4``. We reproduce that policy while
+    refusing any missing current tensor or any other checkpoint-only key.
+    """
+
+    model_state = model.state_dict()
+    model_keys = set(model_state)
+    checkpoint_keys = set(state_dict)
+    missing = sorted(model_keys - checkpoint_keys)
+    unexpected = sorted(checkpoint_keys - model_keys)
+    allowed_unexpected = {
+        f"{module}{suffix}"
+        for module in _LEGACY_CHECKPOINT_ATTENTION_MODULES
+        for suffix in _LEGACY_CHECKPOINT_ATTENTION_SUFFIXES
+    }
+    unsupported = sorted(set(unexpected) - allowed_unexpected)
+    if missing or unsupported:
+        raise RuntimeError(
+            "DFPIR checkpoint is incompatible with the official source model: "
+            f"missing={missing}, unsupported_checkpoint_keys={unsupported}"
+        )
+
+    compatible = dict(model_state)
+    compatible.update({key: state_dict[key] for key in model_state})
+    model.load_state_dict(compatible, strict=True)
+    return {
+        "model_tensor_count": len(model_state),
+        "checkpoint_tensor_count": len(state_dict),
+        "ignored_legacy_keys": unexpected,
+        "coverage": 1.0,
+    }
+
+
 def task_from_scenario(scenario: str) -> str:
     name = scenario.lower()
     if "rain" in name:
@@ -102,7 +152,9 @@ class DFPIRAdapter(nn.Module):
         if weights:
             checkpoint = torch.load(weights, map_location=self.device, weights_only=False)
             state_dict = checkpoint.get("state_dict", checkpoint.get("model", checkpoint))
-            self.model.load_state_dict(state_dict, strict=False)
+            self.checkpoint_load_report = load_official_dfpir_state(
+                self.model, state_dict
+            )
 
         if use_clip:
             import clip

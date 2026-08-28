@@ -50,7 +50,8 @@ Ultralytics 8.4.53, and an NVIDIA GeForce RTX 3050 6 GB.
 python -m compileall models rcadnet baselines tools train_matched_restorer.py
 python -m pytest -q tests\test_losses.py tests\test_practical_metadata.py `
   tests\test_trace_state_loss.py tests\test_tracer_sensor_adapter.py `
-  tests\test_matched_detector_objective.py tests\test_nafnet_official.py
+  tests\test_matched_detector_objective.py tests\test_nafnet_official.py `
+  tests\test_dfpir_official.py
 ```
 
 ## Reproduction map
@@ -67,5 +68,9 @@ python -m pytest -q tests\test_losses.py tests\test_practical_metadata.py `
 - `tools/run_crid46_sequence_disjoint_comparison.py`: CRID temporal protocol.
 - `tools/build_tracer_journal_assets.py`: ledger-to-table/vector-figure build.
 - `tools/build_tracer_qualitative_panels.py`: frozen qualitative selection.
+
+The CRID collection contains 4,134 native frames and synchronized telemetry.
+Its de-identified data release will be maintained in this repository; see
+`DATA_AND_WEIGHTS.md` for the privacy boundary and current availability.
 
 Detailed commands and split safeguards are in `REPRODUCIBILITY.md`.

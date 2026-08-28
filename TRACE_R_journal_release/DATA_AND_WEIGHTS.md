@@ -15,10 +15,13 @@ They retain their original licenses.
 ## CRID
 
 CRID comprises 4,134 native 4752x3168 Sony ILX-LR1 frames and synchronized SBG
-records. The 46 manually annotated frames and precise geolocation require a
-controlled data release because street-level images may contain people, vehicle
-plates, and location information. The code archive contains only hashes and
-protocol manifests, not raw images or coordinates.
+records; 46 frames have manually checked road-defect boxes. The project
+repository is the release location for de-identified images, synchronized
+telemetry, annotations, and alignment summaries. Publication of unredacted
+street imagery and precise coordinates remains subject to privacy review
+because frames may contain people, vehicle plates, and location information.
+The present code archive therefore contains hashes and protocol manifests, not
+unredacted images or precise coordinates.
 
 ## Checkpoints
 

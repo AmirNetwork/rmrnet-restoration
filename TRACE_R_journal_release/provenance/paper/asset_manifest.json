@@ -10,14 +10,21 @@
     "controlled_ledger_sha256": "30ff13f5cd49b32f2c375ad04e236db202a3d4f4775e68ebf9b8fb26262613da"
   },
   "outputs": {
-    "tables\\table_controlled_summary.tex": "b46230f32408193d8dd78f51c0382d29fef7ac2e710eb3379903c4ac5742d1ef",
+    "tables\\table_controlled_summary.tex": "f1915df824932f1cbf6699efcb800464b69a98db94c3685638570cc2fba3eb12",
+    "tables\\table_inference_inputs.tex": "067a9d5cce0afbdcd66f523893e04411b628da3d9f705ab1b3d752fee708813b",
     "tables\\table_condition_results.tex": "716592719d0a0a86766272ff00a698be7e22d4565a9dd5365931f4cffc48150d",
     "tables\\table_fidelity.tex": "6785caaf54558941d649da73ed4854c7894c7b1573c2983de5481f0fdaf69373",
-    "tables\\table_metadata_controls.tex": "03654f4bb277ab910ff67057a68a2fffe7dc4db134947adebb57708cf0206819",
+    "tables\\table_metadata_controls.tex": "914953ce2da84efc4b63344b23e1740efd786afeffb0daafe28e74f64f659a89",
     "tables\\table_crid.tex": "e0cdb27f591e02087bfd46a178c099a5a262c78c40919ed5bbaa1e5ae23b4b44",
     "tables\\table_training_audit.tex": "be314cb9f6d125cac597c5587a79b8ff4fd930683e62da129717b322a4782b88",
-    "figures\\fig_trace_architecture.pdf": "e70481cc80de35d7d36d480f0910a8a8271d9f1a9ca719bf02b243393d6478a8",
-    "figures\\fig_trace_controlled_results.pdf": "ac6a6073e663747789ccd466a44c6cfdeae71d5243949e819c309229e5ca5b42",
-    "figures\\fig_trace_crid_ap.pdf": "00bfde6cef5a9d867790fd140784df1f07d837f0a126a13c39b0637230e46461"
+    "tables\\table_architecture_audit.tex": "9b5bd093885c5e9cd9173d4881cb71052c6ff732b4948c120b4cf8743c6e5455",
+    "figures\\fig_trace_architecture.pdf": "127cec0283b49d07f4d4cb50bffb9954ef9065725c4fbb6521b9d70281a42f6d",
+    "figures\\fig_trace_controlled_results.pdf": "581ef469aae9fd085305022839fca2a53c214e1f3dd993a9213e4ed76dbb3721",
+    "figures\\fig_trace_crid_ap.pdf": "3454a12f080095499a94233aa1fb743b2551b827e1544d4f4c23d2cc60566e59",
+    "figures\\fig_trace_ivcnz_qualitative.pdf": "958af49794518b72f64b080d384e1162aafb6e04a1cbc57f67e00e395c022fe1",
+    "figures\\fig_trace_pcm_qualitative.pdf": "ad1fbcc656dbac74429a85f937f6617b859d6e2def6c768c25c331c09b913ee4",
+    "figures\\fig_trace_crid_qualitative.pdf": "8169816a738cc1e9593964e0b2452e7b1c7a1020d75cae7a74d02530d8e17027",
+    "figures\\fig_trace_crid_collection.pdf": "d6a6a485fb4c0db63458a815b213a0ef6f77f1540422c0291b1e692163363b15",
+    "figures\\qualitative_selection_manifest.json": "82fa53cf479ce1971f13a5e4c3bd03154f3ac73e0c1320c36f9a56ddb30845b2"
   }
 }
