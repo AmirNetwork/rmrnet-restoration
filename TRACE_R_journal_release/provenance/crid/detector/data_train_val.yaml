@@ -1,0 +1,9 @@
+path: C:/Users/61411/Documents/Codex/2026-05-24/i-am-developing-a-new-research/datasets/crid320_annotation_20260829/exports/latest
+train: train.txt
+val: validation.txt
+nc: 4
+names:
+  0: 'Longitudinal Crack (D00)'
+  1: 'Transverse Crack (D10)'
+  2: 'Alligator Crack (D20)'
+  3: 'Pothole (D40)'

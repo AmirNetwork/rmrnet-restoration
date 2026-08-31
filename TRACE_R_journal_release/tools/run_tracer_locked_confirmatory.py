@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 """Run the frozen TRACE-R confirmatory test exactly once.
 
 The script is deliberately separate from checkpoint selection. It reads the

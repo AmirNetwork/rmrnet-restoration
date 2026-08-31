@@ -1,14 +1,17 @@
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from __future__ import annotations
 
 import ast
 from pathlib import Path
 
+import pytest
 import torch
 
 from baselines.dfpir_adapter import _load_dfpir_model_class, load_official_dfpir_state
 
 
 ROOT = Path(__file__).resolve().parents[1]
+DFPIR_SOURCE = ROOT / "third_party" / "DFPIR-main"
 
 
 def test_publication_dfpir_loader_is_strict() -> None:
@@ -35,6 +38,10 @@ def test_publication_dfpir_loader_is_strict() -> None:
     )
 
 
+@pytest.mark.skipif(
+    not DFPIR_SOURCE.is_dir(),
+    reason="official DFPIR source is not bundled; install third_party/DFPIR-main",
+)
 def test_source_native_filter_requires_full_current_model_coverage() -> None:
     model = _load_dfpir_model_class()(
         dim=8,

@@ -1604,6 +1604,12 @@ def main() -> None:
                 eta = max(0.0, min(float(args.residual_strength), 1.0))
                 restored = (tensor + eta * (restored - tensor)).clamp(0.0, 1.0)
             restored = restored[..., : original_size[0], : original_size[1]]
+            # Float-to-PIL conversion scales then casts to uint8; it does not
+            # guarantee clipping first. Slightly negative or above-one values
+            # from residual restorers can therefore wrap into saturated RGB
+            # shapes. Clamp once for every model immediately before diagnostics
+            # and lossless serialization.
+            restored = restored.clamp(0.0, 1.0)
             if args.debug_every > 0 and index % args.debug_every == 0:
                 residual = restored - tensor[..., : original_size[0], : original_size[1]]
                 debug = {

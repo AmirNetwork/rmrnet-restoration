@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 """Evaluate TRACE-R packet interventions on validation data only.
 
 The selected checkpoint is fixed before this diagnostic. Aligned, unavailable,

@@ -1,0 +1,152 @@
+{
+  "status": "VALIDATION_SELECTION_ONLY_TEST_UNOPENED",
+  "model": "dfpir",
+  "checkpoint": "E:\\TRACE_R_experiments\\crid320_matched_restorers_20260829\\dfpir\\dfpir_field_epoch_008.pth",
+  "checkpoint_sha256": "34b4c2d3b1fc0675d1b93a44a606f30d08f53d8b5443998befe378aa05d79223",
+  "detector": "E:\\TRACE_R_experiments\\crid320_detector_v1_20260829\\weights\\best.pt",
+  "detector_sha256": "2dab19dca6809ad45372317937fd83453c7b1ffc97da871912b02b4a62f115fc",
+  "validation_manifest": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\datasets\\crid320_annotation_20260829\\exports\\latest\\validation.txt",
+  "validation_manifest_sha256": "6fe1cb217988ec39d6e3f9e01e6737bfe78484e0aa12d46eded3095953ee6e9a",
+  "metadata_root": null,
+  "metadata_sha256": null,
+  "native_resolution": [
+    4752,
+    3168
+  ],
+  "inference": {
+    "tile": null,
+    "overlap": null,
+    "global_residual_long_side": 1536,
+    "single_output_no_detection_fusion": true
+  },
+  "selection_metric": "validation mAP50; mAP50-95 then lower eta break ties",
+  "candidates": [
+    {
+      "eta": 0.25,
+      "map50": 0.18239701951481435,
+      "map50_95": 0.07172937812683951,
+      "precision": 0.2642409179660582,
+      "recall": 0.2491096866096866,
+      "class_map50_95": [
+        0.04127143753720659,
+        0.09752822862031844,
+        0.08648024945060814,
+        0.06163759689922481
+      ],
+      "class_names": {
+        "0": "longitudinal_crack",
+        "1": "transverse_crack",
+        "2": "alligator_crack",
+        "3": "pothole"
+      },
+      "speed_ms": {
+        "preprocess": 3.399698333669221,
+        "inference": 46.543518332570486,
+        "loss": 0.006968333279170717,
+        "postprocess": 0.19788000063272193
+      }
+    },
+    {
+      "eta": 0.5,
+      "map50": 0.19337791644469388,
+      "map50_95": 0.07660136532755675,
+      "precision": 0.3123234098627588,
+      "recall": 0.24685258966681456,
+      "class_map50_95": [
+        0.042202160455970125,
+        0.10513690628450759,
+        0.08521178464067128,
+        0.07385460992907802
+      ],
+      "class_names": {
+        "0": "longitudinal_crack",
+        "1": "transverse_crack",
+        "2": "alligator_crack",
+        "3": "pothole"
+      },
+      "speed_ms": {
+        "preprocess": 3.4396850006790674,
+        "inference": 46.38928999993368,
+        "loss": 0.0042316668744509425,
+        "postprocess": 0.20850166692980565
+      }
+    },
+    {
+      "eta": 0.75,
+      "map50": 0.18295751560783577,
+      "map50_95": 0.07277517346663682,
+      "precision": 0.2736303215097673,
+      "recall": 0.22987891737891736,
+      "class_map50_95": [
+        0.03387045456339231,
+        0.09802002194502195,
+        0.08536299513591081,
+        0.07384722222222222
+      ],
+      "class_names": {
+        "0": "longitudinal_crack",
+        "1": "transverse_crack",
+        "2": "alligator_crack",
+        "3": "pothole"
+      },
+      "speed_ms": {
+        "preprocess": 3.2727650005350974,
+        "inference": 46.58848833375183,
+        "loss": 0.004313332707776378,
+        "postprocess": 0.23013500055337013
+      }
+    },
+    {
+      "eta": 1.0,
+      "map50": 0.18578724790835763,
+      "map50_95": 0.07379725982706949,
+      "precision": 0.38405404515700503,
+      "recall": 0.18847131485321178,
+      "class_map50_95": [
+        0.03368977631544318,
+        0.09773799862858948,
+        0.08989089399387494,
+        0.07387037037037036
+      ],
+      "class_names": {
+        "0": "longitudinal_crack",
+        "1": "transverse_crack",
+        "2": "alligator_crack",
+        "3": "pothole"
+      },
+      "speed_ms": {
+        "preprocess": 2.4120399995202506,
+        "inference": 46.15376500053874,
+        "loss": 0.0034533329502058527,
+        "postprocess": 0.19051999964479668
+      }
+    }
+  ],
+  "selected": {
+    "eta": 0.5,
+    "map50": 0.19337791644469388,
+    "map50_95": 0.07660136532755675,
+    "precision": 0.3123234098627588,
+    "recall": 0.24685258966681456,
+    "class_map50_95": [
+      0.042202160455970125,
+      0.10513690628450759,
+      0.08521178464067128,
+      0.07385460992907802
+    ],
+    "class_names": {
+      "0": "longitudinal_crack",
+      "1": "transverse_crack",
+      "2": "alligator_crack",
+      "3": "pothole"
+    },
+    "speed_ms": {
+      "preprocess": 3.4396850006790674,
+      "inference": 46.38928999993368,
+      "loss": 0.0042316668744509425,
+      "postprocess": 0.20850166692980565
+    }
+  },
+  "test_images_or_labels_read": false,
+  "completed_unix": 1788052592.2349339
+}

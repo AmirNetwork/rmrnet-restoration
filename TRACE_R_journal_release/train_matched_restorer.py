@@ -690,6 +690,9 @@ class TrainableRestorer(nn.Module):
                     ),
                     top_k=int(source_arch.get("top_k", 2)),
                     refiner_gain=float(source_arch.get("refiner_gain", 0.12)),
+                    refiner_support_floor=float(
+                        source_arch.get("refiner_support_floor", 0.0)
+                    ),
                     use_refiner=bool(source_arch.get("use_refiner", True)),
                     use_compound_blend_gate=bool(
                         source_arch.get("use_compound_blend_gate", False)
@@ -788,9 +791,13 @@ class TrainableRestorer(nn.Module):
                     sensor_gyro_full_scale=float(source_arch.get("sensor_gyro_full_scale", 4.0)),
                     prompt_residual_scale=float(source_arch.get("prompt_residual_scale", 0.10)),
                     refiner_gain=float(source_arch.get("refiner_gain", 0.12)),
+                    refiner_mode=str(source_arch.get("refiner_mode", "spatial")),
                     prompt_router=str(source_arch.get("prompt_router", "hard")),
                     sensor_route_mode=str(source_arch.get("sensor_route_mode", "posterior")),
                     use_refiner=bool(source_arch.get("use_refiner", True)),
+                    refiner_support_floor=float(
+                        source_arch.get("refiner_support_floor", 0.0)
+                    ),
                     compound_motion_blend=float(
                         source_arch.get("compound_motion_blend", 0.0)
                     ),
@@ -805,6 +812,12 @@ class TrainableRestorer(nn.Module):
                     ),
                     cause_refiner_gain=float(
                         source_arch.get("cause_refiner_gain", 0.08)
+                    ),
+                    use_native_gate=bool(
+                        source_arch.get("use_native_gate", False)
+                    ),
+                    native_gate_init=float(
+                        source_arch.get("native_gate_init", 0.50)
                     ),
                 ).to(device)
                 incompatible = model.load_state_dict(payload.get("model", payload), strict=False)
@@ -882,6 +895,9 @@ class TrainableRestorer(nn.Module):
                         ),
                         "top_k": int(model.top_k),
                         "refiner_gain": float(model.refiner_gain),
+                        "refiner_support_floor": float(
+                            model.refiner_support_floor
+                        ),
                         "use_refiner": bool(model.use_refiner),
                         "use_compound_blend_gate": bool(
                             model.use_compound_blend_gate
@@ -951,6 +967,10 @@ class TrainableRestorer(nn.Module):
                         "continuous_state_film": True,
                         "prompt_basis_count": int(model.prompt_basis_count),
                         "refiner_gain": float(model.refiner_gain),
+                        "refiner_mode": str(model.refiner_mode),
+                        "refiner_support_floor": float(
+                            model.refiner_support_floor
+                        ),
                         "prompt_router": str(model.prompt_router),
                         "sensor_route_mode": str(model.sensor_route_mode),
                         "use_refiner": bool(model.use_refiner),
@@ -959,7 +979,23 @@ class TrainableRestorer(nn.Module):
                         "compound_refiner_gain": float(model.compound_refiner_gain),
                         "use_cause_refiners": bool(model.use_cause_refiners),
                         "cause_refiner_gain": float(model.cause_refiner_gain),
+                        "use_native_gate": bool(model.use_native_gate),
+                        "native_gate_init": float(model.native_gate_init),
                     }
+                    # Preserve auditable staged-adaptation provenance. These
+                    # fields do not alter inference; they let later checkpoint
+                    # selection account for the matched stage-1 update budget.
+                    for key in (
+                        "staged_training",
+                        "stage1_epochs",
+                        "stage1_checkpoint_sha256",
+                        "stage1_selected_eta",
+                        "field_initialization",
+                        "native_output_filter",
+                        "native_output_filter_selection_sha256",
+                    ):
+                        if key in source_arch:
+                            self.arch[key] = source_arch[key]
                 self.load_report.update(
                     {
                         "missing_keys": missing_keys,
@@ -1082,7 +1118,12 @@ class TrainableRestorer(nn.Module):
                 code = self.text_code(scenario).expand(subset.shape[0], -1)
                 prediction = self.model(subset, code)
             elif self.kind == "instructir":
-                embedding = self.encode_prompt(self.instruction(scenario)).expand(subset.shape[0], -1)
+                # InstructIR's frozen language encoder uses inference_mode.
+                # Clone its result at the trainable image-model boundary so
+                # autograd can save the conditioning tensor for backward
+                # without attempting to differentiate through the encoder.
+                embedding = self.encode_prompt(self.instruction(scenario)).clone()
+                embedding = embedding.expand(subset.shape[0], -1)
                 prediction = self.model(subset, embedding)
             else:  # pragma: no cover
                 raise ValueError(self.kind)

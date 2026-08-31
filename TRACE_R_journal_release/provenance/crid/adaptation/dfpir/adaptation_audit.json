@@ -1,0 +1,40 @@
+{
+  "protocol": "matched CRID-320 native-field restorer adaptation",
+  "model": "dfpir",
+  "test_split_opened": false,
+  "train_manifest": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\datasets\\crid320_annotation_20260829\\exports\\latest\\train.txt",
+  "train_manifest_sha256": "3c59fcbf5c8180561546049f194feb329673d564cbe7baf56756b22469f9fe81",
+  "train_images": 180,
+  "metadata_root": null,
+  "initial_checkpoint": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\experiments\\matched_final_candidate_index_v28_epoch70_20260821\\dfpir\\dfpir_epoch_070.pth",
+  "initial_checkpoint_sha256": "cca8f4b00a2e6468cb8bcd267393082b7c781500a7f10de1da626f4c0ee4caaf",
+  "detector": "E:\\TRACE_R_experiments\\crid320_detector_v1_20260829\\weights\\best.pt",
+  "detector_sha256": "2dab19dca6809ad45372317937fd83453c7b1ffc97da871912b02b4a62f115fc",
+  "objective": {
+    "frozen_detector_supervised": 1.0,
+    "native_identity_charbonnier": 0.5,
+    "native_edge": 0.1,
+    "restoration_residual_tv": 0.03
+  },
+  "baseline_conditioning": {
+    "demoe": "released automatic router",
+    "dfpir": "native camera-motion task code",
+    "instructir": "native camera-motion instruction",
+    "nafnet": "image only",
+    "rmrp": "measured 82-value camera/IMU/vehicle packet"
+  },
+  "epochs": 20,
+  "samples_per_epoch": 360,
+  "optimizer_steps": 7200,
+  "patch_size": 256,
+  "automatic_mixed_precision": true,
+  "automatic_mixed_precision_dtype": "bfloat16",
+  "defect_crop_probability": 0.75,
+  "parameter_audit": {
+    "scope": "decoder_level1 + refinement + output",
+    "trainable": 945560,
+    "frozen": 30159201
+  },
+  "seed": 2026,
+  "started_unix": 1788022339.7635002
+}

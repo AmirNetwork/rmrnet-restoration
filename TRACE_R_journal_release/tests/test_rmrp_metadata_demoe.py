@@ -1,10 +1,21 @@
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
 import torch
 
 from baselines.demoe_adapter import DeMoEAdapter
 from models.rmrp_metadata_demoe import RMRPMetadataDeMoE
 from rcadnet.practical_metadata import CONTEXT_START, PRACTICAL_SENSOR_DIM
+
+
+DEMOE_SOURCE = Path(__file__).resolve().parents[1] / "third_party" / "DeMoE-main"
+pytestmark = pytest.mark.skipif(
+    not DEMOE_SOURCE.is_dir(),
+    reason="official DeMoE source is not bundled; install third_party/DeMoE-main",
+)
 
 
 def build_model(

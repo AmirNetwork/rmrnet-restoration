@@ -1,3 +1,4 @@
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from __future__ import annotations
 
 """Metadata-conditioned NAFNet control with a declared conditioning budget."""

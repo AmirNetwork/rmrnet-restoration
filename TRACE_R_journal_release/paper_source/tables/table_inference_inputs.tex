@@ -11,7 +11,7 @@ NAFNet & Paired degraded/clean crops only & None & None \\
 InstructIR & Paired crops and a text instruction naming the rendered corruption & Same corruption instruction & Fixed generic road-restoration instruction \\
 DFPIR & Paired crops and the published CLIP-style corruption prompt & Prompt naming the rendered corruption & Fixed motion-deblurring prompt \\
 DeMoE-auto & Paired crops; the rendered condition exposes the corresponding expert during adaptation & Image-derived expert route; no external label & Image-derived expert route; no external label \\
-TRACE-R & Paired crops and observable virtual camera, IMU, vehicle, availability, and quality records & Per-image virtual capture record & Per-image Sony/SBG capture record \\
+TRACE-R & Paired crops and observable virtual camera, IMU, vehicle, availability, and quality records & Per-image virtual capture record & Per-image Sony/SBG record controls the automatic reliability gate; reviewed boxes are used only in calibration \\
 DeMoE-oracle & Same DeMoE adaptation as above & Rendered corruption label; upper-bound control & Not evaluated \\
 \bottomrule
 \end{tabular}

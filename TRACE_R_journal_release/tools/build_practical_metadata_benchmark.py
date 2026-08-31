@@ -1,3 +1,4 @@
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from __future__ import annotations
 
 """Build the practical-sensor version of the PCM/IVCNZ benchmark.

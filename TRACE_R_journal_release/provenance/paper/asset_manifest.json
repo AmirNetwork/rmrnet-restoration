@@ -4,27 +4,37 @@
   "detector_output_fusion": false,
   "single_restored_image_per_method": true,
   "sources": {
-    "controlled": "E:\\TRACE_R_experiments\\trace_locked_confirmatory_v69_20260828",
-    "metadata_controls": "E:\\TRACE_R_experiments\\trace_metadata_controls_v66_20260828",
-    "crid": "E:\\TRACE_R_experiments\\trace_crid46_direct_v70_20260828",
-    "controlled_ledger_sha256": "30ff13f5cd49b32f2c375ad04e236db202a3d4f4775e68ebf9b8fb26262613da"
+    "controlled": {
+      "path": "E:\\TRACE_R_experiments\\trace_locked_confirmatory_v72_20260828\\final_provenance_ledger.json",
+      "sha256": "b2595b63c351a536fdc9f6182709c0472763ce54a973a20523ea255b0e519338"
+    },
+    "metadata_controls": {
+      "path": "E:\\TRACE_R_experiments\\trace_metadata_controls_v66_20260828\\metadata_control_summary.csv",
+      "sha256": "fb4138ffa97178c93f9b7a885fbc780163280aef6e19a4170696b90e87faa4a3"
+    },
+    "crid": {
+      "path": "E:\\TRACE_R_experiments\\crid320_sealed_test_20260831\\SEALED_TEST_COMPLETE.json",
+      "sha256": "9c1ca7c480c300617c5eb2bc89b23fcfcf6113ca4b5605b1171beeb0cac45498"
+    }
   },
   "outputs": {
-    "tables\\table_controlled_summary.tex": "f1915df824932f1cbf6699efcb800464b69a98db94c3685638570cc2fba3eb12",
-    "tables\\table_inference_inputs.tex": "067a9d5cce0afbdcd66f523893e04411b628da3d9f705ab1b3d752fee708813b",
-    "tables\\table_condition_results.tex": "716592719d0a0a86766272ff00a698be7e22d4565a9dd5365931f4cffc48150d",
-    "tables\\table_fidelity.tex": "6785caaf54558941d649da73ed4854c7894c7b1573c2983de5481f0fdaf69373",
+    "tables\\table_controlled_summary.tex": "bb7dcc6bb69411ebe141fa9cd1a0fd98657bd9532407958752404840510e3563",
+    "tables\\table_inference_inputs.tex": "912551e16a8046eac735274c679079945acbf677cac5d407ebbb039f0774a1bc",
+    "tables\\table_condition_results.tex": "cd699c72a40b8f6a3b5c3a07a05e24adac7cb374c3612571c1b5977062c57568",
+    "tables\\table_fidelity.tex": "bb32f0c5881f645c21aa3a36ed638419fb80836875afac938395431c82844eda",
     "tables\\table_metadata_controls.tex": "914953ce2da84efc4b63344b23e1740efd786afeffb0daafe28e74f64f659a89",
-    "tables\\table_crid.tex": "e0cdb27f591e02087bfd46a178c099a5a262c78c40919ed5bbaa1e5ae23b4b44",
-    "tables\\table_training_audit.tex": "be314cb9f6d125cac597c5587a79b8ff4fd930683e62da129717b322a4782b88",
-    "tables\\table_architecture_audit.tex": "9b5bd093885c5e9cd9173d4881cb71052c6ff732b4948c120b4cf8743c6e5455",
-    "figures\\fig_trace_architecture.pdf": "127cec0283b49d07f4d4cb50bffb9954ef9065725c4fbb6521b9d70281a42f6d",
-    "figures\\fig_trace_controlled_results.pdf": "581ef469aae9fd085305022839fca2a53c214e1f3dd993a9213e4ed76dbb3721",
-    "figures\\fig_trace_crid_ap.pdf": "3454a12f080095499a94233aa1fb743b2551b827e1544d4f4c23d2cc60566e59",
-    "figures\\fig_trace_ivcnz_qualitative.pdf": "958af49794518b72f64b080d384e1162aafb6e04a1cbc57f67e00e395c022fe1",
-    "figures\\fig_trace_pcm_qualitative.pdf": "ad1fbcc656dbac74429a85f937f6617b859d6e2def6c768c25c331c09b913ee4",
-    "figures\\fig_trace_crid_qualitative.pdf": "8169816a738cc1e9593964e0b2452e7b1c7a1020d75cae7a74d02530d8e17027",
-    "figures\\fig_trace_crid_collection.pdf": "d6a6a485fb4c0db63458a815b213a0ef6f77f1540422c0291b1e692163363b15",
-    "figures\\qualitative_selection_manifest.json": "82fa53cf479ce1971f13a5e4c3bd03154f3ac73e0c1320c36f9a56ddb30845b2"
-  }
+    "tables\\table_crid.tex": "1129bafd98c802d31e5a1b16a620bac1d2100c0e9a48cc2eb569e00ea7aaa3df",
+    "tables\\table_architecture_audit.tex": "9402caed531f95107a27a15123ebda2a0d710140d807cfc77e79941a7bc3602b",
+    "tables\\table_crid_adaptation_audit.tex": "205edcbe550c18550b28e7b9fbf54b7450e8531f180a6ed595f4cff72f1a5158",
+    "figures\\fig_trace_architecture.pdf": "f6a53bf3c8e2045b4626d5210da48f3bbf1ca7ef3064220eb7ae877787f1733c",
+    "figures\\fig_trace_controlled_results.pdf": "5ec664ca25a05e34f3e963a4ff6cfbcc32db221e2c92adcb1f928de65e09bf10",
+    "figures\\fig_trace_crid_ap.pdf": "7eb370b95694a1c693075e750f789843c09076bd19fe0b4cdbd928d083fd1e68",
+    "figures\\fig_trace_ivcnz_qualitative.pdf": "79ddae3946f8a45ae69085fe88216197e57560c9d4adadf8ef35a16b70c550a3",
+    "figures\\fig_trace_pcm_qualitative.pdf": "64e4783f0d6fb3f296a22444361d795e88a690b5fa1be15b1cec73aaa14ee31a",
+    "figures\\fig_trace_crid_qualitative.pdf": "3bc7141417ed4a86d8468d8869812259b24d6d3cb001410e80e5d202a61238bf",
+    "figures\\fig_trace_crid_collection.pdf": "1841e163106bace9412678c6a7243043a7201cec6256255a9a32d6179bdc20d9",
+    "figures\\qualitative_selection_manifest.json": "94ea56bef7c7bfd3375c5a9d18c9c22ff71e38c5e9185e1421ce10e750fc1e51"
+  },
+  "manuscript_sha256": "a94be7a90096f8ae3c0a5f741f0d09543d3286adc46ac2ffb65bbe28dafceccd",
+  "compiled_pdf_sha256": "c3c6292d7f376eb2e7ea1e73ac512156776d614726fd770a65ab6a29a1191f51"
 }

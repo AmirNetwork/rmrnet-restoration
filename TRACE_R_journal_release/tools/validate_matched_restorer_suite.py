@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 """Select matched-restorer checkpoints using validation detection only.
 
 The selector first ranks epoch 0/5/.../30 on deterministic validation subsets,

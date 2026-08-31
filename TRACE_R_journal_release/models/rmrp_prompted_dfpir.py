@@ -1,10 +1,14 @@
-"""Sensor-conditioned DFPIR backbone used by the final RMR-P model.
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
+"""Sensor-conditioned DFPIR substrate supported by TRACE-R.
 
-The image backbone is deliberately shared with the strongest matched baseline.
-RMR-P adds only an observable-sensor state path, an image fallback, and a
-bounded residual head. This makes the controlled comparison interpretable:
-both methods start from the same DFPIR checkpoint and receive the same target
-domain optimizer-step budget.
+The image backbone can be shared with a matched DFPIR control. TRACE-R adds an
+observable-sensor state path, an image fallback, and bounded correction heads.
+The internal ``RMRP`` class name is retained only for checkpoint compatibility.
+
+In the frozen CRID policy the selected DFPIR state is copied exactly, the
+feature adapters remain at identity, and measured packet reliability gates a
+validation-selected full-resolution correction. Controlled TRACE-R experiments
+instead use the DeMoE-backed implementation with learned distributed adapters.
 """
 
 from __future__ import annotations
@@ -15,6 +19,58 @@ from torch import nn
 
 from rcadnet.model import PostPriorEvidenceRefiner
 from rcadnet.practical_metadata import PRACTICAL_SENSOR_DIM, PracticalSensorEncoder
+
+
+class SensorConditionedDetailEnhancer(nn.Module):
+    """Apply only a bounded gain to detail already present in the candidate.
+
+    CRID contains sharp native captures rather than paired degraded/clean
+    images.  Its field adaptation therefore must not learn an unconstrained
+    image generator.  This module estimates a per-channel gain from the fused
+    image/sensor state and applies it to a fixed local high-pass residual:
+
+        I_r = clip(I_p + q(z) * a(z) * (I_p - B(I_p)), 0, 1).
+
+    ``B`` is a fixed 5x5 box low-pass filter, ``q`` is metadata support, and
+    ``a`` is bounded by ``max_gain``.  Zero initialization exactly preserves
+    the incoming candidate before field calibration.
+    """
+
+    def __init__(self, code_dim: int = 8, max_gain: float = 0.5) -> None:
+        super().__init__()
+        if not 0.0 < max_gain <= 0.5:
+            raise ValueError("detail-enhancer max_gain must be in (0, 0.5]")
+        self.max_gain = float(max_gain)
+        self.gain_head = nn.Sequential(
+            nn.Linear(code_dim, 24),
+            nn.GELU(),
+            nn.Linear(24, 3),
+        )
+        final = self.gain_head[-1]
+        assert isinstance(final, nn.Linear)
+        nn.init.zeros_(final.weight)
+        nn.init.zeros_(final.bias)
+
+    def forward(
+        self,
+        degraded: torch.Tensor,
+        neural: torch.Tensor,
+        candidate: torch.Tensor,
+        code: torch.Tensor,
+        support: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        del degraded, neural
+        blurred = F.avg_pool2d(candidate, kernel_size=5, stride=1, padding=2)
+        detail = candidate - blurred
+        gain = self.max_gain * torch.tanh(self.gain_head(code))
+        support = support.clamp(0.0, 1.0)[:, None].to(candidate.dtype)
+        gain = gain * support
+        correction = gain[:, :, None, None] * detail
+        restored = torch.clamp(candidate + correction, 0.0, 1.0)
+        gate = (
+            gain.abs().mean(dim=1, keepdim=True) / self.max_gain
+        )[:, :, None, None].expand(-1, -1, candidate.shape[-2], candidate.shape[-1])
+        return restored, gate, correction
 
 
 class ImageCorruptionState(nn.Module):
@@ -48,7 +104,7 @@ class ImageCorruptionState(nn.Module):
 
 
 class RMRPPromptedDFPIR(nn.Module):
-    """Road Metadata-aware Restoration for Pavement Inspection.
+    """Backward-compatible DFPIR realization of TRACE-R.
 
     Let ``z_I`` be the image-estimated state, ``z_M`` the state decoded from
     camera/IMU/vehicle measurements, and ``q_M`` the coordinate-wise sensor
@@ -74,11 +130,15 @@ class RMRPPromptedDFPIR(nn.Module):
         prompt_router: str = "hard",
         sensor_route_mode: str = "posterior",
         use_refiner: bool = True,
+        refiner_mode: str = "spatial",
+        refiner_support_floor: float = 0.0,
         compound_motion_blend: float = 0.0,
         use_compound_refiner: bool = False,
         compound_refiner_gain: float = 0.18,
         use_cause_refiners: bool = False,
         cause_refiner_gain: float = 0.08,
+        use_native_gate: bool = False,
+        native_gate_init: float = 0.50,
     ) -> None:
         super().__init__()
         if prompt_embeddings.ndim != 2 or prompt_embeddings.shape[1] != 512:
@@ -95,13 +155,19 @@ class RMRPPromptedDFPIR(nn.Module):
         self.sensor_gyro_full_scale = float(sensor_gyro_full_scale)
         self.prompt_residual_scale = float(prompt_residual_scale)
         self.prompt_basis_count = int(prompt_embeddings.shape[0])
-        if prompt_router not in {"hard", "sparse_blend"}:
+        if prompt_router not in {"hard", "sparse_blend", "fixed_deblur"}:
             raise ValueError(f"Unsupported prompt router: {prompt_router}")
         self.prompt_router = prompt_router
         if sensor_route_mode not in {"posterior", "physical_fused"}:
             raise ValueError(f"Unsupported sensor route mode: {sensor_route_mode}")
         self.sensor_route_mode = sensor_route_mode
         self.use_refiner = bool(use_refiner)
+        if refiner_mode not in {"spatial", "detail"}:
+            raise ValueError(f"Unsupported refiner mode: {refiner_mode}")
+        self.refiner_mode = str(refiner_mode)
+        if not 0.0 <= refiner_support_floor <= 1.0:
+            raise ValueError("refiner_support_floor must be in [0, 1]")
+        self.refiner_support_floor = float(refiner_support_floor)
         if not 0.0 <= compound_motion_blend <= 1.0:
             raise ValueError("compound_motion_blend must be in [0, 1]")
         self.compound_motion_blend = float(compound_motion_blend)
@@ -122,11 +188,16 @@ class RMRPPromptedDFPIR(nn.Module):
             nn.GELU(),
             nn.Linear(64, 512),
         )
-        self.refiner = (
-            PostPriorEvidenceRefiner(code_dim=8, hidden_channels=32, max_gain=refiner_gain)
-            if self.use_refiner
-            else None
-        )
+        if not self.use_refiner:
+            self.refiner = None
+        elif self.refiner_mode == "detail":
+            self.refiner = SensorConditionedDetailEnhancer(
+                code_dim=8, max_gain=refiner_gain
+            )
+        else:
+            self.refiner = PostPriorEvidenceRefiner(
+                code_dim=8, hidden_channels=32, max_gain=refiner_gain
+            )
         self.refiner_gain = float(refiner_gain)
         self.compound_refiner = (
             PostPriorEvidenceRefiner(
@@ -144,6 +215,27 @@ class RMRPPromptedDFPIR(nn.Module):
         if self.use_cause_refiners:
             self.enable_cause_refiners(self.cause_refiner_gain)
         self.register_buffer("prompt_embeddings", prompt_embeddings.detach().float().clone())
+        if not 0.0 < native_gate_init < 1.0:
+            raise ValueError("native gate initialization must lie in (0, 1)")
+        self.use_native_gate = bool(use_native_gate)
+        self.native_gate_init = float(native_gate_init)
+        self.native_gate_head = (
+            nn.Sequential(
+                nn.Linear(32, 32),
+                nn.GELU(),
+                nn.Linear(32, 1),
+            )
+            if self.use_native_gate
+            else None
+        )
+        if self.native_gate_head is not None:
+            final = self.native_gate_head[-1]
+            assert isinstance(final, nn.Linear)
+            nn.init.zeros_(final.weight)
+            nn.init.constant_(
+                final.bias,
+                torch.logit(torch.tensor(self.native_gate_init)).item(),
+            )
         if not hasattr(self.backbone, "enable_continuous_conditioning"):
             raise TypeError("DFPIR backbone does not expose continuous conditioning")
         self.backbone.enable_continuous_conditioning(code_dim=8)
@@ -173,6 +265,32 @@ class RMRPPromptedDFPIR(nn.Module):
             ).to(device=self.prompt_embeddings.device)
         self.use_refiner = True
         self.refiner_gain = float(max_gain)
+
+    def enable_native_gate(self, initial_strength: float = 0.50) -> None:
+        """Enable the automatic one-image pass-through policy.
+
+        The scalar gate is inferred from image state, sensor state,
+        disagreement, and availability. It controls the restoration residual,
+        not detector outputs: ``I_o = I_d + eta(I_d, m) (I_r - I_d)``.
+        """
+
+        if not 0.0 < float(initial_strength) < 1.0:
+            raise ValueError("native gate initialization must lie in (0, 1)")
+        if self.native_gate_head is None:
+            self.native_gate_head = nn.Sequential(
+                nn.Linear(32, 32),
+                nn.GELU(),
+                nn.Linear(32, 1),
+            ).to(device=self.prompt_embeddings.device)
+            final = self.native_gate_head[-1]
+            assert isinstance(final, nn.Linear)
+            nn.init.zeros_(final.weight)
+            nn.init.constant_(
+                final.bias,
+                torch.logit(torch.tensor(float(initial_strength))).item(),
+            )
+        self.use_native_gate = True
+        self.native_gate_init = float(initial_strength)
 
     def enable_compound_refiner(self, max_gain: float = 0.18) -> None:
         """Enable the identity-initialized motion/low-light residual expert."""
@@ -387,14 +505,21 @@ class RMRPPromptedDFPIR(nn.Module):
         **_: object,
     ) -> torch.Tensor | dict[str, torch.Tensor | None]:
         del return_aux
-        (
-            code,
-            image_code,
-            sensor_code,
-            sensor_physical,
-            support,
-            sensor_direct,
-        ) = self._sensor_state(image, metadata)
+        # The restoration backbone may use BF16 on memory-constrained GPUs,
+        # but the low-dimensional sensor posterior and native gate must retain
+        # FP32 resolution. Otherwise small, frame-specific gate logits round to
+        # one constant before sigmoid and the telemetry path becomes inert.
+        with torch.amp.autocast(device_type=image.device.type, enabled=False):
+            state_image = image.float()
+            state_metadata = metadata.float() if metadata is not None else None
+            (
+                code,
+                image_code,
+                sensor_code,
+                sensor_physical,
+                support,
+                sensor_direct,
+            ) = self._sensor_state(state_image, state_metadata)
         if self.sensor_route_mode == "physical_fused":
             # Discrete task selection should remain tied to observable capture
             # physics when that coordinate is reliable. The learned posterior
@@ -406,7 +531,19 @@ class RMRPPromptedDFPIR(nn.Module):
             )
         else:
             route_code = code
-        predicted_prompt_weights = self._prompt_weights(route_code)
+        if self.prompt_router == "fixed_deblur":
+            # Native road imagery has no benchmark scenario label. DFPIR's
+            # released deblur prompt is used as the stable image prior, while
+            # the measured packet still enters every continuous FiLM block.
+            # This prevents high ISO alone from hard-routing an already
+            # well-exposed frame through the low-light task.
+            predicted_prompt_weights = image.new_zeros(
+                (image.shape[0], self.prompt_basis_count)
+            )
+            deblur_index = 1 if self.prompt_basis_count == 6 else 0
+            predicted_prompt_weights[:, deblur_index] = 1.0
+        else:
+            predicted_prompt_weights = self._prompt_weights(route_code)
         prompt_weights = predicted_prompt_weights
         if prompt_teacher_weights is not None:
             teacher = prompt_teacher_weights.to(
@@ -497,14 +634,45 @@ class RMRPPromptedDFPIR(nn.Module):
             correction = torch.zeros_like(image)
             cause_refiner_weights = prompt_weights[:, 1:]
         else:
+            # Native field imagery may contain detector-relevant softness even
+            # when the categorical corruption state is weak.  The support
+            # floor keeps the identity-initialized correction trainable in that
+            # regime while the learned severity still controls its remaining
+            # range.  A floor of zero preserves historical checkpoint behavior.
+            refiner_support = self.refiner_support_floor + (
+                1.0 - self.refiner_support_floor
+            ) * code[:, -1]
             restored, refiner_gate, correction = self.refiner(
                 image,
                 backbone_restored,
                 backbone_restored,
                 code,
-                code[:, -1],
+                refiner_support,
             )
             cause_refiner_weights = prompt_weights[:, 1:]
+        native_gate = image.new_ones((image.shape[0], 1))
+        if self.native_gate_head is not None:
+            with torch.amp.autocast(device_type=image.device.type, enabled=False):
+                disagreement = (sensor_code.float() - image_code.float()).abs()
+                gate_features = torch.cat(
+                    [
+                        image_code.float(),
+                        sensor_code.float(),
+                        disagreement,
+                        support.float(),
+                    ],
+                    dim=1,
+                )
+                native_gate = torch.sigmoid(
+                    self.native_gate_head.float()(gate_features)
+                )
+                restored = torch.clamp(
+                    image.float()
+                    + native_gate[:, :, None, None]
+                    * (restored.float() - image.float()),
+                    0.0,
+                    1.0,
+                )
         if not return_dict:
             return restored
         return {
@@ -535,6 +703,7 @@ class RMRPPromptedDFPIR(nn.Module):
             "cause_refiner_weights": cause_refiner_weights,
             "prompt_weights": prompt_weights,
             "predicted_prompt_weights": predicted_prompt_weights,
+            "native_gate": native_gate[:, 0],
             "phi": None,
             "lambda1": None,
             "lambda2": None,

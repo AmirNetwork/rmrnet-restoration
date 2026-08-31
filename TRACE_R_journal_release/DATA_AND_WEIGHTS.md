@@ -15,7 +15,8 @@ They retain their original licenses.
 ## CRID
 
 CRID comprises 4,134 native 4752x3168 Sony ILX-LR1 frames and synchronized SBG
-records; 46 frames have manually checked road-defect boxes. The project
+records. The reported field study uses 320 human-reviewed frames with 565 boxes
+and a frozen temporal 180/60/80 adaptation/validation/test split. The project
 repository is the release location for de-identified images, synchronized
 telemetry, annotations, and alignment summaries. Publication of unredacted
 street imagery and precise coordinates remains subject to privacy review
@@ -32,7 +33,9 @@ unredacted images or precise coordinates.
 - PCM detector SHA-256:
   `7b6db99cd29da5ed4488d99a0afce2606491222251ce2669592290133562d290`
 - CRID detector SHA-256:
-  `1e7ebe925286b087d6912922bd093d157bfc9d47f47afab0c3dd086bd5a4b141`
+  `2dab19dca6809ad45372317937fd83453c7b1ffc97da871912b02b4a62f115fc`
+- CRID TRACE-R field-policy checkpoint SHA-256:
+  `f67019ef510b47f6a21f9036e6f5a3f74479154f54288e3937c76d174b3ff045`
 
 Download DeMoE, DFPIR, and InstructIR weights from their official repositories.
 The NAFNet comparison starts from the authors' released

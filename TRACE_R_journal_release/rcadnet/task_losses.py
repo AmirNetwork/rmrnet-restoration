@@ -1028,6 +1028,34 @@ class FrozenDetectorSupervisedLoss(nn.Module):
         }
         return loss
 
+    @torch.no_grad()
+    def detached_candidate_losses(
+        self,
+        candidates: Sequence[torch.Tensor],
+        *,
+        classes: torch.Tensor,
+        bboxes: torch.Tensor,
+        valid: torch.Tensor,
+    ) -> torch.Tensor:
+        """Return frozen-detector losses for training-only policy targets.
+
+        The values are detached and must never be used as a validation or test
+        selection shortcut. They provide a supervised target for an automatic
+        restoration-strength controller on labelled training crops.
+        """
+
+        if not candidates:
+            raise ValueError("At least one restoration candidate is required")
+        targets = self._flatten_targets(classes, bboxes, valid)
+        losses = []
+        for candidate in candidates:
+            prepared, prepared_targets = self._prepare_image_and_targets(
+                candidate.float(), targets
+            )
+            total, _parts = self._detector_loss(prepared, prepared_targets)
+            losses.append(total.detach())
+        return torch.stack(losses)
+
     def train(self, mode: bool = True) -> "FrozenDetectorSupervisedLoss":
         super().train(False)
         self.detector.eval()

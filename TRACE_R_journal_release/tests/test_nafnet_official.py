@@ -1,3 +1,4 @@
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 """Regression tests for the paper's faithful NAFNet baseline."""
 
 from __future__ import annotations

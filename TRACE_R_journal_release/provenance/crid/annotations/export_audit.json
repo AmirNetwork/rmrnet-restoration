@@ -1,0 +1,13 @@
+{
+  "exported_utc": "2026-08-29T12:44:01.103065+00:00",
+  "frames": 320,
+  "reviewed_frames": 320,
+  "complete": true,
+  "boxes": 565,
+  "coco_path": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\datasets\\crid320_annotation_20260829\\exports\\latest\\annotations_coco.json",
+  "coco_sha256": "6d31a6a26c01d2d0d238a7827e5b82e23b2de7174d5e3e6225e54c1353c6e09c",
+  "annotation_source_sha256": "60d6ba2b11e7953947cb2dd78ae1c148e473fc5238232be4b187878c3eb1a61c",
+  "locked_split_sha256": "348b6e45716313082d9c6a0b17976d4cc25b68c0d2e3eafcb859c7733dfcd4e5",
+  "frozen_annotations": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\datasets\\crid320_annotation_20260829\\annotations_frozen.json",
+  "frozen_annotations_sha256": "60d6ba2b11e7953947cb2dd78ae1c148e473fc5238232be4b187878c3eb1a61c"
+}

@@ -5,10 +5,13 @@
 Author: Amir Ghorbani (`amir.ghorbani@rmit.edu.au`)
 
 TRACE-R is a single-output image restorer for vehicle-based pavement inspection.
-It combines one DeMoE backbone with an exposure-aligned camera, IMU, and vehicle
-record. The record informs an internal restoration route and identity-initialized
-low-rank feature adapters at several scales. The released inference path does not
-combine restorers, native/restored detector boxes, or detector outputs.
+It combines a restoration substrate with an exposure-aligned camera, IMU, and
+vehicle record. The controlled instance uses DeMoE and learns distributed
+sensor-conditioned adapters. The CRID field instance follows a conservative
+field transfer without paired clean images: validation selects the matched DFPIR substrate, the
+feature adapters remain at identity, and measured packet reliability controls a
+bounded output correction. The inference path does not combine restorers or
+detector outputs.
 
 The Python identifier `rmrp` and checkpoint class `RMRPMetadataDeMoE` are retained
 only for backward-compatible loading of the arXiv precursor. All user-facing
@@ -19,8 +22,8 @@ outputs and the accepted checkpoint identify the method as TRACE-R.
 - `provenance/controlled/final_provenance_ledger.json`: one-time IVCNZ/PCM test.
 - `provenance/metadata_controls/metadata_control_summary.csv`: validation-only
   aligned, unavailable, and wrong-packet intervention.
-- `provenance/crid/`: native-resolution CRID validation freeze and later temporal
-  evaluation.
+- `provenance/crid/`: CRID-320 annotation freeze, detector selection, matched
+  adaptation audits, validation policies, and one-time sealed test.
 - `provenance/paper/asset_manifest.json`: hashes of generated paper assets.
 
 The selected checkpoint hash is
@@ -28,6 +31,9 @@ The selected checkpoint hash is
 Large datasets, detector weights, restoration checkpoints, and third-party
 weights are not redistributed. See `DATA_AND_WEIGHTS.md` for sources and the
 expected directory layout.
+
+`CODE_PROVENANCE.md` distinguishes original TRACE-R components from
+project-written compatibility adapters and separately licensed upstream code.
 
 ## Environment
 
@@ -65,11 +71,17 @@ python -m pytest -q tests\test_losses.py tests\test_practical_metadata.py `
 - `baselines/nafnet_road.py`: faithful dependency-free official NAFNet architecture.
 - `tools/run_tracer_locked_confirmatory.py`: frozen controlled test.
 - `tools/run_tracer_metadata_controls.py`: packet intervention.
-- `tools/run_crid46_sequence_disjoint_comparison.py`: CRID temporal protocol.
-- `tools/build_tracer_journal_assets.py`: ledger-to-table/vector-figure build.
-- `tools/build_tracer_qualitative_panels.py`: frozen qualitative selection.
+- `tools/train_crid320_detector.py`: training-block field detector adaptation.
+- `tools/train_crid320_restorer.py`: field fine-tuning from reviewed boxes without paired clean images.
+- `tools/build_crid320_staged_trace_init.py`: exact selected-DFPIR-to-TRACE initialization.
+- `tools/evaluate_crid320_validation.py`: checkpoint and residual selection.
+- `tools/freeze_crid320_trace_field_policy.py`: pre-test TRACE-R policy freeze.
+- `tools/run_crid320_sealed_test.py`: one-time 80-frame confirmatory test.
+- `tools/refresh_trace_r_asset_manifest.py`: source-ledger and paper-asset hashes.
+- `tools/build_crid320_paper_assets.py`: sealed-ledger CRID table and figures.
 
 The CRID collection contains 4,134 native frames and synchronized telemetry.
+The paper reports 320 reviewed frames under a frozen 180/60/80 temporal split.
 Its de-identified data release will be maintained in this repository; see
 `DATA_AND_WEIGHTS.md` for the privacy boundary and current availability.
 

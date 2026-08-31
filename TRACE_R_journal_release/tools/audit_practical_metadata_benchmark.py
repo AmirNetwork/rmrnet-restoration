@@ -1,3 +1,4 @@
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from __future__ import annotations
 
 """Audit the practical sensor benchmark before training or test release."""

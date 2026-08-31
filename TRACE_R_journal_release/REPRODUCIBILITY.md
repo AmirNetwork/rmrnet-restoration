@@ -80,35 +80,58 @@ restored image. DeMoE-oracle is a non-deployable upper bound. InstructIR and
 DFPIR are condition-informed controls in the synthetic study and are identified
 as such in the paper.
 
-## 4. CRID temporal evaluation
+## 4. CRID-320 field evaluation at full resolution
 
-Construct 82-field sidecars from synchronized Sony EXIF and 200-Hz SBG records,
-then run validation before the later temporal block:
+CRID has no sharp/degraded pair. The 320 reviewed frames are frozen by time as
+180 adaptation, 60 validation, and 80 test images. Each restorer starts from its
+matched controlled-road checkpoint. Its output is passed through the same frozen
+detector; reviewed boxes define the detector loss, whose gradient updates only
+the restorer. Boxes are never restorer inputs. NAFNet, InstructIR, DFPIR, and
+DeMoE use the same training images, defect crops, detector objective,
+identity/edge anchors, 20-epoch candidate trajectory, and 7,200-update budget.
+The trainable subset is architecture-specific and is recorded for every run.
+Validation selects NAFNet epoch 20 and epoch 8 for InstructIR, DFPIR, and DeMoE,
+with residual blends 1.0, 0.5, 0.5, and 0.75, respectively.
+
+DFPIR has the highest primary validation mAP50, so the CRID TRACE-R policy is
+composed from its selected epoch-8 state. That state descends from the DFPIR
+epoch-70 controlled-road checkpoint, not directly from an untouched public
+weight. The direct DFPIR and TRACE-R rows therefore share the same image
+substrate, providing a direct control for the telemetry policy.
+Its feature adapters retain their identity initialization; no additional
+gradient update is represented by the reported field checkpoint. The per-frame
+82-value Sony/SBG packet controls an automatic reliability gate around a bounded
+full-resolution correction selected on the 60-frame validation block. The frozen
+policy is tested once on the 80-frame block. This differs from the controlled
+DeMoE-backed TRACE-R checkpoint, where distributed sensor adapters are learned
+from paired data.
 
 ```powershell
-python tools\run_crid46_sequence_disjoint_comparison.py `
-  --out E:\TRACE_R_experiments\trace_crid `
-  --detector PATH_TO_YOLO26_ROAD_DAMAGE.pt `
-  --rmr-checkpoint PATH_TO_TRACE_R.pth `
-  --metadata-root PATH_TO_CRID_METADATA
-
-python tools\run_crid46_sequence_disjoint_comparison.py `
-  --out E:\TRACE_R_experiments\trace_crid --run-test
+python tools\train_crid320_detector.py
+powershell -ExecutionPolicy Bypass -File tools\run_crid320_matched_adaptation.ps1
+powershell -ExecutionPolicy Bypass -File tools\run_crid320_validation_sweep.ps1
+python tools\build_crid320_staged_trace_init.py --help
+python tools\freeze_crid320_trace_field_policy.py
+python tools\run_crid320_sealed_test.py
+python tools\build_crid320_paper_assets.py --confidence 0.10 --options 10
 ```
 
-The first command freezes the residual strength on the earlier 12-frame block.
-The second applies that fixed choice once to the later 13-frame block. Native
-4752x3168 coordinates are preserved and detector outputs are not fused. TRACE-R
-uses the same jointly trained IVCNZ--PCM checkpoint as the controlled study; no
-CRID image, telemetry record, or annotation updates its weights.
+The detector and every restorer are selected on the 60-frame validation block.
+`freeze_crid320_trace_field_policy.py` records the checkpoint, residual policy,
+sensor thresholds, and SHA-256 identities before the test manifest is opened.
+The sealed runner then evaluates each fixed method once on the 80-frame test
+block. Native 4752x3168 coordinates are preserved and detector outputs are not
+fused. See `provenance/crid/` for the exact executed arguments and ledgers.
 
 ## 5. Paper assets
 
-After copying the frozen ledgers to the paths expected by the builders:
+The controlled tables and figures in the paper archive are fixed by
+`provenance/controlled/final_provenance_ledger.json` and their hashes are listed
+in `provenance/paper/asset_manifest.json`. The CRID assets can be regenerated
+directly from the completed sealed-test ledger:
 
 ```powershell
-python tools\build_tracer_journal_assets.py --paper paper_ieee_tits_trace_r
-python tools\build_tracer_qualitative_panels.py --paper paper_ieee_tits_trace_r
+python tools\build_crid320_paper_assets.py --paper paper_ieee_tits_trace_r
 cd paper_ieee_tits_trace_r
 pdflatex -interaction=nonstopmode manuscript.tex
 bibtex manuscript
@@ -116,4 +139,5 @@ pdflatex -interaction=nonstopmode manuscript.tex
 pdflatex -interaction=nonstopmode manuscript.tex
 ```
 
-The manuscript and integrated appendix are in the same `manuscript.tex` and PDF.
+The manuscript and S-numbered supplementary material are in the same
+`manuscript.tex` and PDF.

@@ -39,9 +39,17 @@ SELECTION = Path(
     r"E:\TRACE_R_experiments\official_nafnet_matched_v68_20260828\validation"
     r"\best_by_val_map.json"
 )
-OUT = Path(r"E:\TRACE_R_experiments\trace_locked_confirmatory_v69_20260828")
+OUT = Path(r"E:\TRACE_R_experiments\trace_locked_confirmatory_v72_20260828")
 UPSTREAM_SOURCE = ROOT / "third_party" / "NAFNet-main" / "basicsr" / "models" / "archs" / "NAFNet_arch.py"
 UPSTREAM_WEIGHT = ROOT / "weights" / "nafnet" / "NAFNet-GoPro-width32.pth"
+NAFNET_WRAPPER = ROOT / "baselines" / "nafnet_road.py"
+RESTORE_RUNNER = ROOT / "tools" / "restore_yolo_split.py"
+STABILITY_AUDIT = (
+    Path(r"E:\TRACE_R_experiments\official_nafnet_matched_v68_20260828")
+    / "validation"
+    / "stability_audit_v1"
+    / "checkpoint_stability.json"
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -61,9 +69,31 @@ def freeze_record(args: argparse.Namespace) -> dict[str, Any]:
     if not isinstance(selected, dict):
         raise KeyError("best_by_val_map50.nafnet is missing")
     checkpoint = Path(selected["checkpoint"]).resolve()
-    for required in (checkpoint, UPSTREAM_SOURCE, UPSTREAM_WEIGHT):
+    for required in (
+        checkpoint,
+        UPSTREAM_SOURCE,
+        UPSTREAM_WEIGHT,
+        NAFNET_WRAPPER,
+        RESTORE_RUNNER,
+        STABILITY_AUDIT,
+    ):
         if not required.exists():
             raise FileNotFoundError(required)
+
+    stability = json.loads(STABILITY_AUDIT.read_text(encoding="utf-8"))
+    checkpoint_stability = next(
+        (
+            row
+            for row in stability.get("checkpoints", [])
+            if row.get("checkpoint") == checkpoint.name
+        ),
+        None,
+    )
+    if not checkpoint_stability or not checkpoint_stability.get("stability_valid"):
+        raise RuntimeError(
+            "Validation-selected NAFNet checkpoint failed the validation-only "
+            f"output-stability gate: {checkpoint}"
+        )
 
     record: dict[str, Any] = {
         "status": "official_nafnet_selection_frozen_before_test",
@@ -80,8 +110,15 @@ def freeze_record(args: argparse.Namespace) -> dict[str, Any]:
         "official_architecture": "NAFNet width 32; enc_blk_nums [1,1,1,28]; middle_blk_num 1; dec_blk_nums [1,1,1,1]",
         "official_source": str(UPSTREAM_SOURCE.resolve()),
         "official_source_sha256": locked.sha256(UPSTREAM_SOURCE),
+        "nafnet_wrapper": str(NAFNET_WRAPPER.resolve()),
+        "nafnet_wrapper_sha256": locked.sha256(NAFNET_WRAPPER),
+        "restore_runner": str(RESTORE_RUNNER.resolve()),
+        "restore_runner_sha256": locked.sha256(RESTORE_RUNNER),
         "released_initialization": str(UPSTREAM_WEIGHT.resolve()),
         "released_initialization_sha256": locked.sha256(UPSTREAM_WEIGHT),
+        "validation_stability_audit": str(STABILITY_AUDIT.resolve()),
+        "validation_stability_audit_sha256": locked.sha256(STABILITY_AUDIT),
+        "validation_stability_gate": checkpoint_stability,
         "single_restored_image": True,
         "detector_output_fusion": False,
         "inference_information": "image only",
@@ -109,7 +146,10 @@ def freeze_once(path: Path, record: dict[str, Any]) -> dict[str, Any]:
             "checkpoint_sha256",
             "epoch",
             "official_source_sha256",
+            "nafnet_wrapper_sha256",
+            "restore_runner_sha256",
             "released_initialization_sha256",
+            "validation_stability_audit_sha256",
             "detectors",
             "test_source_yaml_sha256",
         )

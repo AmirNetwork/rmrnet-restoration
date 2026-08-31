@@ -1,0 +1,44 @@
+{
+  "protocol": "CRID-320 human annotation freeze",
+  "frozen_utc": "2026-08-29T12:44:01.122242+00:00",
+  "frames": 320,
+  "boxes": 565,
+  "reviewed_frames": 320,
+  "uncertain_frames": 0,
+  "zero_box_frames_by_split": {
+    "train": 83,
+    "validation": 39,
+    "test": 40
+  },
+  "boxes_by_class": {
+    "0": 165,
+    "1": 227,
+    "2": 119,
+    "3": 54
+  },
+  "boxes_by_split": {
+    "train": 390,
+    "validation": 53,
+    "test": 122
+  },
+  "boxes_by_source": {
+    "human": 402,
+    "existing_crid46_manual": 163
+  },
+  "working_annotations_sha256": "60d6ba2b11e7953947cb2dd78ae1c148e473fc5238232be4b187878c3eb1a61c",
+  "frozen_annotations_path": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\datasets\\crid320_annotation_20260829\\annotations_frozen.json",
+  "frozen_annotations_sha256": "60d6ba2b11e7953947cb2dd78ae1c148e473fc5238232be4b187878c3eb1a61c",
+  "locked_split_sha256": "348b6e45716313082d9c6a0b17976d4cc25b68c0d2e3eafcb859c7733dfcd4e5",
+  "manifest_sha256": "f8bcda8e4d6a74a864c391b20a073ba9844fec27732d424da470a903c551b05d",
+  "annotation_audit_sha256": "a83ca6aa75d98660c2c79c9e33276dae5296bdc8b31a650fe130a9f53c0a32d9",
+  "export_audit_path": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\datasets\\crid320_annotation_20260829\\exports\\latest\\export_audit.json",
+  "export_audit_sha256": "3871ade7e0810eca2535b623eff19146041be0f52dc7bb242af6c5e9fa3aec98",
+  "quality_checks": {
+    "native_bounds_valid": true,
+    "minimum_box_side_pixels": 16,
+    "same_class_iou_duplicate_threshold": 0.95,
+    "same_class_duplicates": 0,
+    "all_frames_reviewed": true,
+    "unresolved_uncertainty": 0
+  }
+}

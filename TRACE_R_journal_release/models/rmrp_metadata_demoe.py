@@ -1,3 +1,4 @@
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 """Checkpoint-compatible metadata-routed DeMoE base used by TRACE-R.
 
 This module keeps the released DeMoE image-restoration function and adds a

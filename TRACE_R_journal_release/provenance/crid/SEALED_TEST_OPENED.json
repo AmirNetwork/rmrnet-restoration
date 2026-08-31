@@ -1,0 +1,66 @@
+{
+  "status": "SEALED_TEST_OPENED_AFTER_ALL_SELECTIONS_FROZEN",
+  "opened_unix": 1788100916.0966012,
+  "test_manifest": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\datasets\\crid320_annotation_20260829\\exports\\latest\\test.txt",
+  "test_manifest_sha256": "c09c1ce9897e646373b4d3e225f6e722aca72076a02a02523164977aa6a0063c",
+  "detector": "E:\\TRACE_R_experiments\\crid320_detector_v1_20260829\\weights\\best.pt",
+  "detector_sha256": "2dab19dca6809ad45372317937fd83453c7b1ffc97da871912b02b4a62f115fc",
+  "methods": [
+    {
+      "model": "nafnet",
+      "checkpoint": "E:\\TRACE_R_experiments\\crid320_matched_restorers_20260829\\nafnet\\nafnet_field_epoch_020.pth",
+      "checkpoint_sha256": "ef447e829368c0222243d20aba82b5e07b36926e5e7abeb4408177b3cc032471",
+      "eta": 1.0,
+      "validation_map50": 0.15174673646584777,
+      "validation_map50_95": 0.051267521829164144,
+      "validation_report": "E:\\TRACE_R_experiments\\crid320_restorer_validation_20260829\\nafnet\\nafnet_field_epoch_020\\validation_selection.json",
+      "validation_report_sha256": "5acd273e6da78b28ed2d428e97cf74d6d4a091d4e2eabdf2ec662750b4a6dfe0",
+      "lm_head": null
+    },
+    {
+      "model": "instructir",
+      "checkpoint": "E:\\TRACE_R_experiments\\crid320_matched_restorers_20260829\\instructir\\instructir_field_epoch_008.pth",
+      "checkpoint_sha256": "42a0a5cc8722ec846f6fe84461361d7d37b4c7f2d6b3d8fe6e8f14aceeac6ad7",
+      "eta": 0.5,
+      "validation_map50": 0.18340282624800414,
+      "validation_map50_95": 0.07436897796506817,
+      "validation_report": "E:\\TRACE_R_experiments\\crid320_restorer_validation_20260829\\instructir\\instructir_field_epoch_008\\validation_selection.json",
+      "validation_report_sha256": "bf2a956d0ba1a68bd0ebf6d73d205f0754330ae1b8f2f0e58e02f6b272352fa2",
+      "lm_head": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\weights\\instructir\\lm_instructir-7d.pt"
+    },
+    {
+      "model": "dfpir",
+      "checkpoint": "E:\\TRACE_R_experiments\\crid320_matched_restorers_20260829\\dfpir\\dfpir_field_epoch_008.pth",
+      "checkpoint_sha256": "34b4c2d3b1fc0675d1b93a44a606f30d08f53d8b5443998befe378aa05d79223",
+      "eta": 0.5,
+      "validation_map50": 0.19337791644469388,
+      "validation_map50_95": 0.07660136532755675,
+      "validation_report": "E:\\TRACE_R_experiments\\crid320_restorer_validation_20260829\\dfpir\\dfpir_field_epoch_008\\validation_selection.json",
+      "validation_report_sha256": "f3f216cb52fcc217959faf29e587100c3222f3740ec31ac50352732bb6cb6ace",
+      "lm_head": null
+    },
+    {
+      "model": "demoe",
+      "checkpoint": "E:\\TRACE_R_experiments\\crid320_matched_restorers_20260829\\demoe\\demoe_field_epoch_008.pth",
+      "checkpoint_sha256": "a54df79d6a41cfb383619b097b343e8561d90a6308d2dc94efd91c5d231fc74a",
+      "eta": 0.75,
+      "validation_map50": 0.1690165669346489,
+      "validation_map50_95": 0.06665039679338762,
+      "validation_report": "E:\\TRACE_R_experiments\\crid320_restorer_validation_20260829\\demoe\\demoe_field_epoch_008\\validation_selection.json",
+      "validation_report_sha256": "8471ca87dc22763f704a51776e06bed16d3df46b07d5afcd8de16c9790f850d8",
+      "lm_head": null
+    },
+    {
+      "model": "rmrp",
+      "checkpoint": "E:\\TRACE_R_experiments\\crid320_trace_field_policy_v8_20260831\\trace_crid_field_policy_frozen.pth",
+      "checkpoint_sha256": "f67019ef510b47f6a21f9036e6f5a3f74479154f54288e3937c76d174b3ff045",
+      "eta": 1.0,
+      "validation_map50": 0.2171635481758742,
+      "validation_map50_95": 0.0846965206513554,
+      "validation_report": "E:\\TRACE_R_experiments\\crid320_trace_field_policy_v8_validation_20260831\\rmrp\\trace_crid_field_policy_frozen\\validation_selection.json",
+      "validation_report_sha256": "ff46e2ca6b46203f34a1612c72e12ba237b4f88fe773b6fc4874958dca703b1b",
+      "lm_head": null
+    }
+  ],
+  "test_images": 80
+}

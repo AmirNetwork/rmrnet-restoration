@@ -1,0 +1,83 @@
+{
+  "status": "VALIDATION_ONLY_LOW_DIMENSIONAL_SWEEP_TEST_UNOPENED",
+  "base_dir": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\datasets\\crid320_annotation_20260829\\exports\\latest\\images\\validation",
+  "detector": "E:\\TRACE_R_experiments\\crid320_detector_v1_20260829\\weights\\best.pt",
+  "detector_sha256": "2dab19dca6809ad45372317937fd83453c7b1ffc97da871912b02b4a62f115fc",
+  "validation_manifest": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\datasets\\crid320_annotation_20260829\\exports\\latest\\validation.txt",
+  "selection_metric": "validation mAP50; mAP50-95 breaks ties",
+  "candidates": [
+    {
+      "tag": "unsharp_sigma3p0_alpham0p2",
+      "spec": {
+        "kind": "unsharp",
+        "sigma": 3.0,
+        "alpha": -0.2
+      },
+      "map50": 0.21026473282397146,
+      "map50_95": 0.08581449607713665,
+      "precision": 0.42731899183253597,
+      "recall": 0.1736111111111111,
+      "class_map50": [
+        0.02749825049086843,
+        0.27217807051936505,
+        0.2963826102856524,
+        0.245
+      ],
+      "class_map50_95": [
+        0.011457204459491329,
+        0.10528439434448764,
+        0.10401638550456757,
+        0.12250000000000001
+      ],
+      "class_names": {
+        "0": "longitudinal_crack",
+        "1": "transverse_crack",
+        "2": "alligator_crack",
+        "3": "pothole"
+      },
+      "speed_ms": {
+        "preprocess": 3.9969599994947203,
+        "inference": 49.522133335509956,
+        "loss": 0.005351667641662061,
+        "postprocess": 0.29532500047935173
+      }
+    }
+  ],
+  "selected": {
+    "tag": "unsharp_sigma3p0_alpham0p2",
+    "spec": {
+      "kind": "unsharp",
+      "sigma": 3.0,
+      "alpha": -0.2
+    },
+    "map50": 0.21026473282397146,
+    "map50_95": 0.08581449607713665,
+    "precision": 0.42731899183253597,
+    "recall": 0.1736111111111111,
+    "class_map50": [
+      0.02749825049086843,
+      0.27217807051936505,
+      0.2963826102856524,
+      0.245
+    ],
+    "class_map50_95": [
+      0.011457204459491329,
+      0.10528439434448764,
+      0.10401638550456757,
+      0.12250000000000001
+    ],
+    "class_names": {
+      "0": "longitudinal_crack",
+      "1": "transverse_crack",
+      "2": "alligator_crack",
+      "3": "pothole"
+    },
+    "speed_ms": {
+      "preprocess": 3.9969599994947203,
+      "inference": 49.522133335509956,
+      "loss": 0.005351667641662061,
+      "postprocess": 0.29532500047935173
+    }
+  },
+  "test_images_or_labels_read": false
+}

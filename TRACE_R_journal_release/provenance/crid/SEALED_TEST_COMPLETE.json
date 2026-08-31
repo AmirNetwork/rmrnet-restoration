@@ -1,0 +1,256 @@
+{
+  "status": "ONE_TIME_CRID320_SEALED_TEST_COMPLETE",
+  "opened_record": "E:\\TRACE_R_experiments\\crid320_sealed_test_20260831\\SEALED_TEST_OPENED.json",
+  "opened_record_sha256": "53eac12e82ada3cb0fa6bb9076b688533558ffebdab1992a83dc8f5d80af4d4d",
+  "test_manifest_sha256": "c09c1ce9897e646373b4d3e225f6e722aca72076a02a02523164977aa6a0063c",
+  "detector_sha256": "2dab19dca6809ad45372317937fd83453c7b1ffc97da871912b02b4a62f115fc",
+  "results": [
+    {
+      "status": "ONE_TIME_SEALED_TEST_COMPLETE",
+      "method": "native",
+      "eta": 0.0,
+      "checkpoint": null,
+      "checkpoint_sha256": null,
+      "validation_report": null,
+      "validation_report_sha256": null,
+      "validation_map50": null,
+      "validation_map50_95": null,
+      "map50": 0.19312059259603262,
+      "map50_95": 0.052479863405638524,
+      "precision": 0.27168781450897855,
+      "recall": 0.25546413861523937,
+      "class_map50": [
+        0.3064639273444156,
+        0.08458513923358674,
+        0.18831271121009552,
+        null
+      ],
+      "class_map50_95": [
+        0.1111612737428441,
+        0.01563542494848193,
+        0.030642891525589532,
+        0.052479863405638524
+      ],
+      "class_names": {
+        "0": "longitudinal_crack",
+        "1": "transverse_crack",
+        "2": "alligator_crack",
+        "3": "pothole"
+      },
+      "speed_ms": {
+        "preprocess": 3.5334862492163666,
+        "inference": 48.500562497793,
+        "loss": 0.00377624855900649,
+        "postprocess": 0.20876500093436334
+      },
+      "images": 80,
+      "completed_unix": 1788101155.6157517
+    },
+    {
+      "status": "ONE_TIME_SEALED_TEST_COMPLETE",
+      "method": "nafnet",
+      "eta": 1.0,
+      "checkpoint": "E:\\TRACE_R_experiments\\crid320_matched_restorers_20260829\\nafnet\\nafnet_field_epoch_020.pth",
+      "checkpoint_sha256": "ef447e829368c0222243d20aba82b5e07b36926e5e7abeb4408177b3cc032471",
+      "validation_report": "E:\\TRACE_R_experiments\\crid320_restorer_validation_20260829\\nafnet\\nafnet_field_epoch_020\\validation_selection.json",
+      "validation_report_sha256": "5acd273e6da78b28ed2d428e97cf74d6d4a091d4e2eabdf2ec662750b4a6dfe0",
+      "validation_map50": 0.15174673646584777,
+      "validation_map50_95": 0.051267521829164144,
+      "map50": 0.2137323834229694,
+      "map50_95": 0.05271405567731683,
+      "precision": 0.2636355207081659,
+      "recall": 0.3176241309353271,
+      "class_map50": [
+        0.3456074740035503,
+        0.08258718512532576,
+        0.21300249114003222,
+        null
+      ],
+      "class_map50_95": [
+        0.10743145632404143,
+        0.01590423031591317,
+        0.03480648039199589,
+        0.05271405567731683
+      ],
+      "class_names": {
+        "0": "longitudinal_crack",
+        "1": "transverse_crack",
+        "2": "alligator_crack",
+        "3": "pothole"
+      },
+      "speed_ms": {
+        "preprocess": 3.4638087505300064,
+        "inference": 47.771053749966086,
+        "loss": 0.005211250027059577,
+        "postprocess": 0.2756112487986684
+      },
+      "images": 80,
+      "completed_unix": 1788101519.402446
+    },
+    {
+      "status": "ONE_TIME_SEALED_TEST_COMPLETE",
+      "method": "instructir",
+      "eta": 0.5,
+      "checkpoint": "E:\\TRACE_R_experiments\\crid320_matched_restorers_20260829\\instructir\\instructir_field_epoch_008.pth",
+      "checkpoint_sha256": "42a0a5cc8722ec846f6fe84461361d7d37b4c7f2d6b3d8fe6e8f14aceeac6ad7",
+      "validation_report": "E:\\TRACE_R_experiments\\crid320_restorer_validation_20260829\\instructir\\instructir_field_epoch_008\\validation_selection.json",
+      "validation_report_sha256": "bf2a956d0ba1a68bd0ebf6d73d205f0754330ae1b8f2f0e58e02f6b272352fa2",
+      "validation_map50": 0.18340282624800414,
+      "validation_map50_95": 0.07436897796506817,
+      "map50": 0.21140711336051632,
+      "map50_95": 0.06454383875416339,
+      "precision": 0.2530037487224967,
+      "recall": 0.3444759691706323,
+      "class_map50": [
+        0.36664267961872316,
+        0.0793068621720522,
+        0.18827179829077362,
+        null
+      ],
+      "class_map50_95": [
+        0.14503525145084983,
+        0.01405210370751358,
+        0.03454416110412674,
+        0.06454383875416339
+      ],
+      "class_names": {
+        "0": "longitudinal_crack",
+        "1": "transverse_crack",
+        "2": "alligator_crack",
+        "3": "pothole"
+      },
+      "speed_ms": {
+        "preprocess": 3.3943037498829653,
+        "inference": 48.01642374950461,
+        "loss": 0.005340000279829837,
+        "postprocess": 0.2840387500327779
+      },
+      "images": 80,
+      "completed_unix": 1788101866.5201602
+    },
+    {
+      "status": "ONE_TIME_SEALED_TEST_COMPLETE",
+      "method": "dfpir",
+      "eta": 0.5,
+      "checkpoint": "E:\\TRACE_R_experiments\\crid320_matched_restorers_20260829\\dfpir\\dfpir_field_epoch_008.pth",
+      "checkpoint_sha256": "34b4c2d3b1fc0675d1b93a44a606f30d08f53d8b5443998befe378aa05d79223",
+      "validation_report": "E:\\TRACE_R_experiments\\crid320_restorer_validation_20260829\\dfpir\\dfpir_field_epoch_008\\validation_selection.json",
+      "validation_report_sha256": "f3f216cb52fcc217959faf29e587100c3222f3740ec31ac50352732bb6cb6ace",
+      "validation_map50": 0.19337791644469388,
+      "validation_map50_95": 0.07660136532755675,
+      "map50": 0.20617423339556887,
+      "map50_95": 0.06595059089588191,
+      "precision": 0.31411067606267123,
+      "recall": 0.24229390681003582,
+      "class_map50": [
+        0.3492510455412444,
+        0.07629840201491966,
+        0.19297325263054252,
+        null
+      ],
+      "class_map50_95": [
+        0.15285969967657712,
+        0.014133792207359422,
+        0.030858280803709205,
+        0.06595059089588191
+      ],
+      "class_names": {
+        "0": "longitudinal_crack",
+        "1": "transverse_crack",
+        "2": "alligator_crack",
+        "3": "pothole"
+      },
+      "speed_ms": {
+        "preprocess": 3.605271249762154,
+        "inference": 48.035069999605184,
+        "loss": 0.006337499871733598,
+        "postprocess": 0.27864499897987116
+      },
+      "images": 80,
+      "completed_unix": 1788103901.0843318
+    },
+    {
+      "status": "ONE_TIME_SEALED_TEST_COMPLETE",
+      "method": "demoe",
+      "eta": 0.75,
+      "checkpoint": "E:\\TRACE_R_experiments\\crid320_matched_restorers_20260829\\demoe\\demoe_field_epoch_008.pth",
+      "checkpoint_sha256": "a54df79d6a41cfb383619b097b343e8561d90a6308d2dc94efd91c5d231fc74a",
+      "validation_report": "E:\\TRACE_R_experiments\\crid320_restorer_validation_20260829\\demoe\\demoe_field_epoch_008\\validation_selection.json",
+      "validation_report_sha256": "8471ca87dc22763f704a51776e06bed16d3df46b07d5afcd8de16c9790f850d8",
+      "validation_map50": 0.1690165669346489,
+      "validation_map50_95": 0.06665039679338762,
+      "map50": 0.19920520586923418,
+      "map50_95": 0.06733910001915329,
+      "precision": 0.2438215784629424,
+      "recall": 0.2864994026284349,
+      "class_map50": [
+        0.3520498637976708,
+        0.08112366870963114,
+        0.16444208510040065,
+        null
+      ],
+      "class_map50_95": [
+        0.14643139324737256,
+        0.015141351346266443,
+        0.04044455546382091,
+        0.06733910001915329
+      ],
+      "class_names": {
+        "0": "longitudinal_crack",
+        "1": "transverse_crack",
+        "2": "alligator_crack",
+        "3": "pothole"
+      },
+      "speed_ms": {
+        "preprocess": 2.9358012518059695,
+        "inference": 45.35843250014295,
+        "loss": 0.0036250010452931747,
+        "postprocess": 0.20008749816042837
+      },
+      "images": 80,
+      "completed_unix": 1788105489.8924398
+    },
+    {
+      "status": "ONE_TIME_SEALED_TEST_COMPLETE",
+      "method": "rmrp",
+      "eta": 1.0,
+      "checkpoint": "E:\\TRACE_R_experiments\\crid320_trace_field_policy_v8_20260831\\trace_crid_field_policy_frozen.pth",
+      "checkpoint_sha256": "f67019ef510b47f6a21f9036e6f5a3f74479154f54288e3937c76d174b3ff045",
+      "validation_report": "E:\\TRACE_R_experiments\\crid320_trace_field_policy_v8_validation_20260831\\rmrp\\trace_crid_field_policy_frozen\\validation_selection.json",
+      "validation_report_sha256": "ff46e2ca6b46203f34a1612c72e12ba237b4f88fe773b6fc4874958dca703b1b",
+      "validation_map50": 0.2171635481758742,
+      "validation_map50_95": 0.0846965206513554,
+      "map50": 0.2204244447118788,
+      "map50_95": 0.055072224856512406,
+      "precision": 0.27960046753046774,
+      "recall": 0.34366786140979694,
+      "class_map50": [
+        0.305143516105462,
+        0.079502823915136,
+        0.27662699411503844,
+        null
+      ],
+      "class_map50_95": [
+        0.10158964682340547,
+        0.01543246914070531,
+        0.04819455860542644,
+        0.055072224856512406
+      ],
+      "class_names": {
+        "0": "longitudinal_crack",
+        "1": "transverse_crack",
+        "2": "alligator_crack",
+        "3": "pothole"
+      },
+      "speed_ms": {
+        "preprocess": 2.8910462504427414,
+        "inference": 45.79513249991578,
+        "loss": 0.003931250830646604,
+        "postprocess": 0.19788624995271675
+      },
+      "images": 80,
+      "completed_unix": 1788107241.7829082
+    }
+  ],
+  "completed_unix": 1788107241.8322523
+}

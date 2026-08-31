@@ -1,0 +1,18 @@
+\begin{table*}[!t]
+\centering
+\caption{CRID field-calibration scopes selected before test evaluation.}
+\label{tab:crid_adaptation_audit}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lp{0.43\textwidth}rrr}
+\toprule
+Method & Parameters updated during candidate adaptation & Trainable parameters & Selected epoch & $\eta$ \\
+\midrule
+NAFNet & Full restoration network & 17.1 M & 20 & 1.00 \\
+InstructIR & Encoder/decoder instruction-conditioning blocks and output projection & 1.50 M & 8 & 0.50 \\
+DFPIR & Final decoder stage, refinement blocks, and output projection & 0.946 M & 8 & 0.50 \\
+DeMoE-auto & Full restoration network & 20.2 M & 8 & 0.75 \\
+TRACE-R & Selected DFPIR epoch-8 substrate; identity feature adapters; record-conditioned output policy & 0 additional & 8 inherited & 1.00 \\
+\bottomrule
+\end{tabular}
+\end{table*}

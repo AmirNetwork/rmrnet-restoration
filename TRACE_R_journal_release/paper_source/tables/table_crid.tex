@@ -1,20 +1,18 @@
 \begin{table}[!t]
 \centering
-\caption{Native-resolution CRID temporal field evaluation (13 frames, 49 annotated defects).}
+\caption{Full-resolution CRID-320 confirmatory test (80 frames, 122 defects).}
 \label{tab:crid}
 \scriptsize
-\begin{tabular}{lrrr}
+\begin{tabular}{lrrrr}
 \toprule
-Method & Pooled AP50 & AP10 sensitivity & GT coverage \\
+Method & Precision & Recall & mAP50 & mAP50--95 \\
 \midrule
-Native image & 0.446 & 0.516 & 0.633 \\
-NAFNet & 0.488 & \textbf{0.589} & 0.612 \\
-InstructIR & 0.442 & 0.542 & 0.612 \\
-DFPIR & 0.452 & 0.550 & 0.612 \\
-DeMoE-auto & 0.452 & 0.551 & 0.592 \\
-TRACE-R & \textbf{0.507} & 0.577 & 0.633 \\
+Unprocessed image & 0.272 & 0.255 & 0.193 & 0.052 \\
+NAFNet & 0.264 & 0.318 & 0.214 & 0.053 \\
+InstructIR & 0.253 & 0.344 & 0.211 & 0.065 \\
+DFPIR & 0.314 & 0.242 & 0.206 & 0.066 \\
+DeMoE-auto & 0.244 & 0.286 & 0.199 & \textbf{0.067} \\
+TRACE-R & 0.280 & 0.344 & \textbf{0.220} & 0.055 \\
 \bottomrule
 \end{tabular}
-\vspace{1mm}
-\parbox{0.97\columnwidth}{\scriptsize No synthetic corruption is added. TRACE-R uses validation-selected residual strength $\eta=0.5$ and one restored image. The same frozen detector and native image coordinates are used for every method.}
 \end{table}

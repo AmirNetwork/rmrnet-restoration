@@ -33,9 +33,9 @@ from matplotlib.patches import FancyArrowPatch
 
 ROOT = Path(__file__).resolve().parents[1]
 PAPER = ROOT / "paper_ieee_tits_trace_r"
-CONTROLLED = Path(r"E:\TRACE_R_experiments\trace_locked_confirmatory_v69_20260828")
+CONTROLLED = Path(r"E:\TRACE_R_experiments\trace_locked_confirmatory_v72_20260828")
 CONTROLS = Path(r"E:\TRACE_R_experiments\trace_metadata_controls_v66_20260828")
-CRID = Path(r"E:\TRACE_R_experiments\trace_crid46_direct_v70_20260828")
+CRID = Path(r"E:\TRACE_R_experiments\crid320_sealed_test_20260831")
 
 METHODS = (
     "raw",
@@ -311,46 +311,6 @@ def build_control_table(control_rows: list[dict[str, str]]) -> str:
     )
 
 
-def build_crid_table(crid_rows: list[dict[str, str]]) -> str:
-    order = ("raw", "nafnet", "instructir", "dfpir", "demoe_auto", "rmr_fine_eta0p5")
-    display = {
-        "raw": "Native image",
-        "nafnet": "NAFNet",
-        "instructir": "InstructIR",
-        "dfpir": "DFPIR",
-        "demoe_auto": "DeMoE-auto",
-        "rmr_fine_eta0p5": "TRACE-R",
-    }
-    indexed = index(crid_rows, "method")
-    best10 = max(float(indexed[method]["ap10_primary"]) for method in order)
-    best50 = max(float(indexed[method]["ap50_primary"]) for method in order)
-    rows = []
-    for method in order:
-        row = indexed[method]
-        ap10 = float(row["ap10_primary"])
-        ap50 = float(row["ap50_primary"])
-        coverage = float(row["coverage"])
-        rendered = [
-            rf"\textbf{{{ap50:.3f}}}" if ap50 >= best50 - 1e-12 else f"{ap50:.3f}",
-            rf"\textbf{{{ap10:.3f}}}" if ap10 >= best10 - 1e-12 else f"{ap10:.3f}",
-            f"{coverage:.3f}",
-        ]
-        rows.append(" & ".join([display[method], *rendered]))
-    return latex_table(
-        "Native-resolution CRID temporal field evaluation (13 frames, 49 annotated defects).",
-        "tab:crid",
-        "lrrr",
-        r"Method & Pooled AP50 & AP10 sensitivity & GT coverage",
-        rows,
-        wide=False,
-        note=(
-            "No synthetic corruption is added. TRACE-R uses validation-selected residual "
-            r"strength $\eta=0.5$ and one restored image. The same frozen detector and native "
-            "image coordinates are used for every method."
-        ),
-    )
-
-
 def build_training_table(ledger: dict[str, Any]) -> str:
     rows = []
     for method in ("nafnet", "instructir", "dfpir", "demoe_auto", "trace_r"):
@@ -429,124 +389,69 @@ def arrow(axis: plt.Axes, start: tuple[float, float], end: tuple[float, float]) 
 
 
 def build_architecture_figure(path: Path) -> None:
-    fig, axis = plt.subplots(figsize=(7.16, 3.55))
+    """Draw a monochrome, equation-led summary of TRACE-R."""
+    fig, axis = plt.subplots(figsize=(7.16, 4.55))
     axis.set_xlim(0.0, 1.0)
     axis.set_ylim(0.0, 1.0)
     axis.axis("off")
 
-    ink = "#25313b"
-    blue = "#dcebf7"
-    green = "#dff0e4"
-    amber = "#f7e8c8"
-    grey = "#eef0f2"
-    red = "#f6dfdc"
+    ink = "#111111"
+    fill = "#ffffff"
+    pale = "#f3f3f3"
 
-    # Section guides make the reading order visible without filling the page
-    # with implementation prose.
-    for x, width, label in (
-        (0.015, 0.205, "OBSERVATIONS"),
-        (0.245, 0.285, "CORRUPTION STATE"),
-        (0.555, 0.275, "SHARED RESTORER"),
-        (0.855, 0.13, "OUTPUT"),
-    ):
-        axis.add_patch(
-            mpl.patches.FancyBboxPatch(
-                (x, 0.08), width, 0.84,
-                boxstyle="round,pad=0.006,rounding_size=0.01",
-                linewidth=0.65, edgecolor="#aeb5ba", facecolor="white",
-            )
-        )
-        axis.text(x + 0.012, 0.885, label, color="#59656d", fontsize=6.2, fontweight="bold")
+    axis.text(0.50, 0.965, "Inference path", ha="center", va="top", fontsize=8.0, fontweight="bold")
+    axis.plot([0.02, 0.98], [0.93, 0.93], color=ink, linewidth=0.65)
 
-    # Image observation, drawn as a compact road scene so the figure remains
-    # vector-native.
-    axis.add_patch(mpl.patches.Rectangle((0.035, 0.61), 0.165, 0.20, facecolor="#c8d8df", edgecolor=ink, linewidth=0.75))
-    axis.add_patch(mpl.patches.Polygon([(0.035, 0.61), (0.200, 0.61), (0.142, 0.76), (0.095, 0.76)], closed=True, facecolor="#596269", edgecolor="none"))
-    axis.plot([0.118, 0.119], [0.615, 0.75], color="white", linewidth=1.2)
-    axis.plot([0.174, 0.134], [0.615, 0.75], color="#f1c94a", linewidth=0.8)
-    axis.text(0.117, 0.585, "road image  $I_d$", ha="center", va="top", fontsize=6.6, fontweight="bold")
+    rounded_box(axis, (0.025, 0.655), 0.145, 0.115, "Degraded road image\n" + r"$I_d$", face=fill, fontsize=6.3, weight="bold")
+    rounded_box(axis, (0.025, 0.405), 0.145, 0.155, "Exposure-aligned record\n" + r"$\mathcal{M}=\{m_C,M_I,m_V,a,r\}$" + "\ncamera · IMU · vehicle", face=fill, fontsize=5.6)
+    rounded_box(axis, (0.205, 0.675), 0.145, 0.095, "Image estimate\n" + r"$z_I=g_I(I_d)$" + "  (3)", face=fill, fontsize=6.0)
+    rounded_box(axis, (0.205, 0.410), 0.145, 0.150, "Measured estimate\n" + r"$z_{\rm phy}=h_{\rm phy}(\mathcal{M})$" + "\n" + r"$z_m=\mathrm{clip}(z_{\rm phy}+\Delta z_m)$" + "\n(4)--(5)", face=fill, fontsize=5.25)
+    rounded_box(axis, (0.390, 0.525), 0.175, 0.175, "Reliability-aware fusion\n" + r"$\bar z=q\odot z_m+(1-q)\odot z_I$" + "\n" + r"$z=\mathrm{clip}(\bar z+\Delta z_\psi)$" + "\n(6)", face=fill, fontsize=5.55, weight="bold")
+    rounded_box(axis, (0.410, 0.350), 0.135, 0.095, "Adapter evidence\n" + r"$s=[z_I,z_m,|z_m-z_I|,q]$", face=fill, fontsize=5.4)
 
-    rounded_box(axis, (0.035, 0.43), 0.165, 0.11, "camera\nexposure / gain / focus", face=blue, fontsize=6.2)
-    rounded_box(axis, (0.035, 0.14), 0.165, 0.11, "vehicle and timing\nspeed · pose · sync quality", face=grey, fontsize=6.0)
+    arrow(axis, (0.170, 0.715), (0.205, 0.722))
+    arrow(axis, (0.170, 0.480), (0.205, 0.485))
+    arrow(axis, (0.350, 0.722), (0.390, 0.635))
+    arrow(axis, (0.350, 0.485), (0.390, 0.575))
+    arrow(axis, (0.478, 0.525), (0.478, 0.445))
 
-    # Real SBG angular-rate samples provide a visual example of the temporal
-    # measurement aligned to an exposure. Fall back to a deterministic trace
-    # only when the field log is absent from a redistributed source package.
-    trace = np.array([0.0, 0.4, -0.2, 0.7, -0.4, 0.2, 0.0], dtype=float)
-    sensor_path = ROOT / "ac1.csv"
-    if sensor_path.exists():
-        values: list[float] = []
-        with sensor_path.open(encoding="utf-8", errors="replace") as handle:
-            for row_index, line in enumerate(handle):
-                if row_index < 3:
-                    continue
-                fields = line.rstrip().split("\t")
-                if len(fields) < 15:
-                    continue
-                try:
-                    values.append(float(fields[12]))
-                except ValueError:
-                    continue
-                if len(values) == 35:
-                    break
-        if values:
-            trace = np.asarray(values, dtype=float)
-            trace = (trace - trace.mean()) / max(trace.std(), 1e-6)
-    imu_axis = axis.inset_axes([0.050, 0.275, 0.135, 0.075])
-    imu_axis.plot(np.linspace(-1.0, 1.0, len(trace)), trace, color="#2171a5", linewidth=0.85)
-    imu_axis.axvspan(-0.45, 0.45, color="#dcebf7", alpha=0.8, linewidth=0)
-    imu_axis.axhline(0.0, color="#aeb5ba", linewidth=0.4)
-    imu_axis.set_xticks([]); imu_axis.set_yticks([])
-    for spine in imu_axis.spines.values():
-        spine.set_color("#7f8a91"); spine.set_linewidth(0.45)
-    axis.text(0.117, 0.355, "measured IMU trajectory", ha="center", va="bottom", fontsize=6.1)
+    rounded_box(axis, (0.615, 0.535), 0.205, 0.190, "Restoration backbone  " + r"$B$" + "\n\nencoder  " + r"$\rightarrow$" + "  bottleneck  " + r"$\rightarrow$" + "  decoder\n\n" + r"$x_{l+1}=B_l(x'_l)$" + "  (7)", face=fill, fontsize=5.7, weight="bold")
+    rounded_box(axis, (0.620, 0.340), 0.195, 0.115, "Sensor-conditioned adapters\n" + r"$x'_l=x_l+c_l(s,q)P_l\sigma(D_l(Q_l\mathcal{N}(x_l);s))$" + "\n(8)--(9)", face=pale, fontsize=4.9)
+    axis.text(0.718, 0.755, "expert route from " + r"$z$" + " when supported by " + r"$B$", ha="center", va="bottom", fontsize=5.1)
+    arrow(axis, (0.565, 0.615), (0.615, 0.640))
+    arrow(axis, (0.545, 0.395), (0.620, 0.395))
+    arrow(axis, (0.718, 0.455), (0.718, 0.535))
+    axis.plot([0.170, 0.185, 0.585], [0.745, 0.825, 0.825], color=ink, linewidth=0.75)
+    arrow(axis, (0.585, 0.825), (0.645, 0.725))
 
-    rounded_box(axis, (0.265, 0.62), 0.105, 0.13, "image estimate\n$z_I=g_I(I_d)$", face=amber, fontsize=6.4)
+    rounded_box(axis, (0.865, 0.555), 0.110, 0.145, "Restored image\n" + r"$I_r=f_\theta(I_d,\mathcal{M})$", face=fill, fontsize=6.0, weight="bold")
+    arrow(axis, (0.820, 0.630), (0.865, 0.630))
+
+    axis.plot([0.02, 0.98], [0.285, 0.285], color=ink, linewidth=0.65, linestyle="--")
+    axis.text(0.50, 0.265, "Training objectives", ha="center", va="top", fontsize=7.6, fontweight="bold")
     rounded_box(
         axis,
-        (0.265, 0.30),
-        0.105,
-        0.18,
-        "physical evidence\n" + r"$h_{\mathrm{phy}}(\mathcal{M})$" + "\n\navailability / quality",
-        face=blue,
-        fontsize=6.1,
+        (0.055, 0.075),
+        0.405,
+        0.125,
+        "Paired road data\n"
+        + r"$\mathcal{L}=\mathcal{L}_{\rm fid}+\lambda_t\mathcal{L}_{\rm TDP}+\lambda_d\mathcal{L}_{\rm det}+\lambda_s\mathcal{L}_{\rm state}+\lambda_p\mathcal{L}_{\rm phy}$"
+        + "  (15)",
+        face=fill,
+        fontsize=5.35,
     )
-    rounded_box(axis, (0.405, 0.42), 0.105, 0.22, "joint posterior\n\n$z$  and  $q$\n\nimage fallback", face=green, fontsize=6.3, weight="bold")
-    arrow(axis, (0.200, 0.70), (0.265, 0.69))
-    arrow(axis, (0.200, 0.45), (0.265, 0.40))
-    arrow(axis, (0.200, 0.31), (0.265, 0.37))
-    arrow(axis, (0.370, 0.685), (0.405, 0.58))
-    arrow(axis, (0.370, 0.39), (0.405, 0.48))
-
-    # A compact U-shaped backbone with state-conditioned adapter taps.
-    backbone_blocks = [
-        (0.575, 0.60, 0.045, 0.14),
-        (0.625, 0.53, 0.045, 0.21),
-        (0.675, 0.45, 0.045, 0.29),
-        (0.725, 0.53, 0.045, 0.21),
-        (0.775, 0.60, 0.035, 0.14),
-    ]
-    for index_value, (x, y, width, height) in enumerate(backbone_blocks):
-        color = "#d7e7ef" if index_value < 2 else ("#eadfca" if index_value == 2 else "#dff0e4")
-        axis.add_patch(mpl.patches.Rectangle((x, y), width, height, facecolor=color, edgecolor=ink, linewidth=0.65))
-        axis.add_patch(mpl.patches.Circle((x + width / 2, y + height + 0.035), 0.012, facecolor="#b33a3a", edgecolor="white", linewidth=0.5))
-        if index_value:
-            px, py, pw, ph = backbone_blocks[index_value - 1]
-            arrow(axis, (px + pw, py + ph / 2), (x, y + height / 2))
-    axis.text(0.692, 0.78, "state-conditioned adapters", ha="center", fontsize=6.2, color="#8d2e2e")
-    axis.text(0.600, 0.57, "encoder", ha="center", fontsize=5.8)
-    axis.text(0.697, 0.40, "bottleneck", ha="center", fontsize=5.8)
-    axis.text(0.770, 0.57, "decoder", ha="center", fontsize=5.8)
-    axis.text(0.692, 0.25, "generic multi-scale backbone $B$", ha="center", fontsize=6.5, fontweight="bold")
-    arrow(axis, (0.510, 0.53), (0.575, 0.67))
-    axis.add_patch(FancyArrowPatch((0.200, 0.77), (0.575, 0.71), arrowstyle="-|>", mutation_scale=8, linewidth=0.8, color=ink, connectionstyle="arc3,rad=-0.12"))
-
-    rounded_box(axis, (0.875, 0.57), 0.09, 0.15, "restored image\n$I_r$", face=red, fontsize=6.4, weight="bold")
-    rounded_box(axis, (0.875, 0.28), 0.09, 0.13, "road-defect\ndetector", face=grey, fontsize=6.2)
-    arrow(axis, (0.810, 0.67), (0.875, 0.65))
-    arrow(axis, (0.920, 0.57), (0.920, 0.41))
-
-    axis.text(0.500, 0.025, "Telemetry changes supported internal features; the deployed output is a single restored image.", ha="center", va="bottom", fontsize=6.5, color="#4c5860")
+    rounded_box(
+        axis,
+        (0.540, 0.075),
+        0.405,
+        0.125,
+        "Labelled field calibration\n"
+        + r"$\mathcal{L}_{\rm field}=\lambda_d\mathcal{L}_{\rm det}+\beta_0\mathcal{L}_{\rm id}+\beta_1\mathcal{L}_{\rm edge}+\beta_2\mathcal{L}_{\rm TV}$"
+        + "  (16)",
+        face=fill,
+        fontsize=5.35,
+    )
+    axis.add_patch(FancyArrowPatch((0.745, 0.200), (0.745, 0.335), arrowstyle="-|>", mutation_scale=7, linewidth=0.65, linestyle="--", color=ink))
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)
@@ -594,33 +499,6 @@ def build_controlled_figure(
     plt.close(fig)
 
 
-def build_crid_figure(rows: list[dict[str, str]], path: Path) -> None:
-    order = ("raw", "nafnet", "instructir", "dfpir", "demoe_auto", "rmr_fine_eta0p5")
-    display = {
-        "raw": "Native",
-        "nafnet": "NAFNet",
-        "instructir": "InstructIR",
-        "dfpir": "DFPIR",
-        "demoe_auto": "DeMoE-auto",
-        "rmr_fine_eta0p5": "TRACE-R",
-    }
-    indexed = index(rows, "method")
-    ap50 = [float(indexed[method]["ap50_primary"]) for method in order]
-    x = np.arange(len(order))
-    fig, axis = plt.subplots(figsize=(3.5, 2.45))
-    bars = axis.bar(x, ap50, 0.62, color=["#a8adb3", "#8fb7cc", "#d5a85e", "#6e9d80", "#9676a8", "#b33a3a"], edgecolor="#30343b", linewidth=0.45)
-    axis.set_xticks(x, [display[method] for method in order], rotation=30, ha="right")
-    axis.set_ylabel("Pooled AP50")
-    axis.set_ylim(0.0, max(ap50) * 1.22)
-    axis.grid(axis="y", color="#d8dadd", linewidth=0.45)
-    axis.spines[["top", "right"]].set_visible(False)
-    for bar, value in zip(bars, ap50, strict=True):
-        axis.text(bar.get_x() + bar.get_width() / 2, value + 0.012, f"{value:.3f}", ha="center", va="bottom", fontsize=5.8)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, bbox_inches="tight")
-    plt.close(fig)
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--paper", type=Path, default=PAPER)
@@ -645,18 +523,15 @@ def main() -> None:
     condition_rows = read_csv(args.controlled / "detection" / "all_condition_metrics.csv")
     fidelity_rows = read_csv(args.controlled / "fidelity" / "all_summary.csv")
     control_rows = read_csv(args.controls / "metadata_control_summary.csv")
-    crid_rows = read_csv(args.crid / "test_summary.csv")
 
     write(tables / "table_controlled_summary.tex", build_controlled_table(aggregate))
     write(tables / "table_condition_results.tex", build_condition_table(condition_rows))
     write(tables / "table_fidelity.tex", build_fidelity_table(fidelity_rows))
     write(tables / "table_metadata_controls.tex", build_control_table(control_rows))
-    write(tables / "table_crid.tex", build_crid_table(crid_rows))
     write(tables / "table_training_audit.tex", build_training_table(ledger))
 
     build_architecture_figure(figures / "fig_trace_architecture.pdf")
     build_controlled_figure(aggregate, control_rows, figures / "fig_trace_controlled_results.pdf")
-    build_crid_figure(crid_rows, figures / "fig_trace_crid_ap.pdf")
 
     # Keep the provenance manifest explicit. Legacy manuscript assets may still
     # exist in a working tree, but they must never enter the final evidence set.

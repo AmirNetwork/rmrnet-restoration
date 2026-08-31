@@ -1,3 +1,4 @@
+# Author: Amir Ghorbani <amir.ghorbani@rmit.edu.au>
 from __future__ import annotations
 
 import argparse
@@ -72,6 +73,24 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--tile", type=int, default=768)
     parser.add_argument("--overlap", type=int, default=96)
+    parser.add_argument(
+        "--tile-halo",
+        type=int,
+        default=0,
+        help=(
+            "Extra reflected context around each inference tile. Only the "
+            "central tile region is blended into the native-resolution output."
+        ),
+    )
+    parser.add_argument(
+        "--global-residual-long-side",
+        type=int,
+        default=0,
+        help=(
+            "Run NAFNet once at this global long-side size, then resize its "
+            "residual back to native coordinates. Zero keeps tiled inference."
+        ),
+    )
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--jpeg-quality", type=int, default=95)
     parser.add_argument(
@@ -461,16 +480,39 @@ def restore_tiled(
     *,
     tile: int,
     overlap: int,
+    halo: int = 0,
 ) -> torch.Tensor:
     _, _, height, width = tensor.shape
     if height <= tile and width <= tile:
         return fn(tensor).clamp(0.0, 1.0)
+    if halo < 0:
+        raise ValueError("tile halo cannot be negative")
+    padded = (
+        torch.nn.functional.pad(
+            tensor,
+            (halo, halo, halo, halo),
+            mode="reflect",
+        )
+        if halo
+        else tensor
+    )
     output = torch.zeros_like(tensor)
     weight = torch.zeros((1, 1, height, width), device=tensor.device, dtype=tensor.dtype)
     for y in grid_starts(height, tile, overlap):
         for x in grid_starts(width, tile, overlap):
-            patch = tensor[..., y : y + tile, x : x + tile]
-            restored = fn(patch).clamp(0.0, 1.0)
+            core_h = min(tile, height - y)
+            core_w = min(tile, width - x)
+            patch = padded[
+                ...,
+                y : y + core_h + 2 * halo,
+                x : x + core_w + 2 * halo,
+            ]
+            restored_patch = fn(patch).clamp(0.0, 1.0)
+            restored = restored_patch[
+                ...,
+                halo : halo + core_h,
+                halo : halo + core_w,
+            ]
             tile_weight = smooth_tile_weight(
                 restored.shape[-2],
                 restored.shape[-1],
@@ -487,6 +529,54 @@ def restore_tiled(
     # without changing valid sub-unit weights.
     epsilon = max(float(torch.finfo(weight.dtype).eps), 1e-8)
     return (output / weight.clamp_min(epsilon)).clamp(0.0, 1.0)
+
+
+def restore_global_residual(
+    tensor: torch.Tensor,
+    fn: Callable[[torch.Tensor], torch.Tensor],
+    *,
+    long_side: int,
+    multiple: int = 8,
+) -> torch.Tensor:
+    """Restore at a declared global scale and return a native-size image.
+
+    The released width-32 NAFNet is designed for GoPro-scale frames. Applying
+    it independently to 4.7K local tiles can remove scene context. We instead
+    infer one global residual, resize that residual, and add it to the original
+    native pixels. The output dimensions and detector coordinate system remain
+    unchanged.
+    """
+
+    if long_side <= 0:
+        raise ValueError("global residual long side must be positive")
+    _, _, height, width = tensor.shape
+    scale = min(1.0, float(long_side) / float(max(height, width)))
+    scaled_h = max(1, int(round(height * scale)))
+    scaled_w = max(1, int(round(width * scale)))
+    scaled = torch.nn.functional.interpolate(
+        tensor,
+        size=(scaled_h, scaled_w),
+        mode="bicubic",
+        align_corners=False,
+        antialias=True,
+    )
+    pad_h = (multiple - scaled_h % multiple) % multiple
+    pad_w = (multiple - scaled_w % multiple) % multiple
+    padded = torch.nn.functional.pad(
+        scaled,
+        (0, pad_w, 0, pad_h),
+        mode="reflect",
+    )
+    restored_scaled = fn(padded)[..., :scaled_h, :scaled_w].clamp(0.0, 1.0)
+    residual = restored_scaled - scaled
+    native_residual = torch.nn.functional.interpolate(
+        residual,
+        size=(height, width),
+        mode="bicubic",
+        align_corners=False,
+        antialias=True,
+    )
+    return (tensor + native_residual).clamp(0.0, 1.0)
 
 
 def smooth_tile_weight(
@@ -771,7 +861,7 @@ def main() -> None:
 
                         if model_name == "rmr_blind":
                             model = loaded["rmr"]
-                            restored = restore_tiled(tensor, lambda patch: model(patch, None), tile=args.tile, overlap=args.overlap)
+                            restored = restore_tiled(tensor, lambda patch: model(patch, None), tile=args.tile, overlap=args.overlap, halo=args.tile_halo)
                         elif model_name == "rmr_metadata":
                             model = loaded["rmr"]
                             if (
@@ -800,7 +890,7 @@ def main() -> None:
                                     if metadata
                                     else scenario_code.unsqueeze(0)
                                 )
-                            restored = restore_tiled(tensor, lambda patch: model(patch, code), tile=args.tile, overlap=args.overlap)
+                            restored = restore_tiled(tensor, lambda patch: model(patch, code), tile=args.tile, overlap=args.overlap, halo=args.tile_halo)
                         elif model_name == "rmr_metadata_gated":
                             model = loaded["rmr"]
                             if metadata and metadata_has_reliable_degradation_signal(metadata):
@@ -823,7 +913,7 @@ def main() -> None:
                                             "legacy",
                                         ),
                                     ).unsqueeze(0)
-                                restored = restore_tiled(tensor, lambda patch: model(patch, code), tile=args.tile, overlap=args.overlap)
+                                restored = restore_tiled(tensor, lambda patch: model(patch, code), tile=args.tile, overlap=args.overlap, halo=args.tile_halo)
                                 metadata_policy = "metadata_code"
                                 metadata_reliable = True
                             elif scenario == "native_real":
@@ -831,27 +921,41 @@ def main() -> None:
                                 metadata_policy = "native_evidence_pass"
                                 metadata_reliable = False
                             else:
-                                restored = restore_tiled(tensor, lambda patch: model(patch, None), tile=args.tile, overlap=args.overlap)
+                                restored = restore_tiled(tensor, lambda patch: model(patch, None), tile=args.tile, overlap=args.overlap, halo=args.tile_halo)
                                 metadata_policy = "image_code_fallback"
                                 metadata_reliable = False
                         elif model_name == "nafnet":
                             model = loaded[model_name]
-                            restored = restore_tiled(tensor, lambda patch: model(patch), tile=args.tile, overlap=args.overlap)
+                            restored = (
+                                restore_global_residual(
+                                    tensor,
+                                    lambda patch: model(patch),
+                                    long_side=args.global_residual_long_side,
+                                )
+                                if args.global_residual_long_side > 0
+                                else restore_tiled(
+                                    tensor,
+                                    lambda patch: model(patch),
+                                    tile=args.tile,
+                                    overlap=args.overlap,
+                                    halo=args.tile_halo,
+                                )
+                            )
                         elif model_name == "dfpir":
                             model = loaded[model_name]
-                            restored = restore_tiled(tensor, lambda patch: model(patch, scenario), tile=args.tile, overlap=args.overlap)
+                            restored = restore_tiled(tensor, lambda patch: model(patch, scenario), tile=args.tile, overlap=args.overlap, halo=args.tile_halo)
                         elif model_name in {"demoe_auto", "demoe_scenario"}:
                             model = loaded[model_name]
                             task = "auto" if model_name == "demoe_auto" else "scenario"
-                            restored = restore_tiled(tensor, lambda patch: model(patch, scenario=scenario, task=task), tile=args.tile, overlap=args.overlap)
+                            restored = restore_tiled(tensor, lambda patch: model(patch, scenario=scenario, task=task), tile=args.tile, overlap=args.overlap, halo=args.tile_halo)
                         elif model_name == "instructir_generic":
                             model = loaded["instructir"]
                             prompt = generic_road_prompt()
-                            restored = restore_tiled(tensor, lambda patch: model(patch, prompt), tile=args.tile, overlap=args.overlap)
+                            restored = restore_tiled(tensor, lambda patch: model(patch, prompt), tile=args.tile, overlap=args.overlap, halo=args.tile_halo)
                         elif model_name == "instructir_metadata":
                             model = loaded["instructir"]
                             prompt = metadata_prompt_from_file(metadata, scenario)
-                            restored = restore_tiled(tensor, lambda patch: model(patch, prompt), tile=args.tile, overlap=args.overlap)
+                            restored = restore_tiled(tensor, lambda patch: model(patch, prompt), tile=args.tile, overlap=args.overlap, halo=args.tile_halo)
                         else:
                             raise ValueError(model_name)
 

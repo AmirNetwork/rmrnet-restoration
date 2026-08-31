@@ -19,7 +19,7 @@
       "then maximize TRACE-R TP minus mean comparator TP",
       "then TRACE-R TP, fewer TRACE-R FP, and GT count"
     ],
-    "figure": "paper_ieee_tits_trace_r\\figures\\fig_trace_ivcnz_qualitative.pdf"
+    "figure": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\paper_ieee_tits_trace_r\\figures\\fig_trace_ivcnz_qualitative.pdf"
   },
   {
     "dataset": "pcm",
@@ -41,22 +41,23 @@
       "then maximize TRACE-R TP minus mean comparator TP",
       "then TRACE-R TP, fewer TRACE-R FP, and GT count"
     ],
-    "figure": "paper_ieee_tits_trace_r\\figures\\fig_trace_pcm_qualitative.pdf"
+    "figure": "C:\\Users\\61411\\Documents\\Codex\\2026-05-24\\i-am-developing-a-new-research\\paper_ieee_tits_trace_r\\figures\\fig_trace_pcm_qualitative.pdf"
   },
   {
     "dataset": "crid",
-    "selected_stem": "Cam1_2026-06-09_14-58-20_capt1460_1461",
-    "display_confidence": 0.03,
+    "selected_stem": "Cam1_2026-06-09_15-03-19_capt3859_3860",
+    "display_confidence": 0.1,
     "matching_iou": 0.5,
     "selection": {
-      "ground_truth": 3,
+      "ground_truth": 2,
       "trace_true_positive_iou50": 2,
       "trace_false_positive": 1,
-      "trace_false_negative_iou50": 1,
-      "strongest_baseline_true_positive_iou50": 2,
-      "strongest_baseline_false_positive_at_max_tp": 2,
-      "mean_baseline_true_positive_iou50": 1.2
+      "trace_false_negative_iou50": 0,
+      "strongest_baseline_true_positive_iou50": 1,
+      "strongest_baseline_false_positive_at_max_tp": 1,
+      "mean_baseline_true_positive_iou50": 1.0
     },
+    "source_ledger": "E:\\TRACE_R_experiments\\crid320_sealed_test_20260831\\SEALED_TEST_COMPLETE.json",
     "figure": "paper_ieee_tits_trace_r\\figures\\fig_trace_crid_qualitative.pdf"
   }
 ]
